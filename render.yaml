@@ -18,10 +18,8 @@ services:
     branch: main
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
+    dockerCommand: npm start
     healthCheckPath: /health
-    healthCheckInterval: 30
-    healthCheckTimeout: 10
-    healthCheckInitialDelay: 40
     autoDeploy: true
     envVars:
       - key: NODE_ENV
