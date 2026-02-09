@@ -9,9 +9,9 @@ services:
     region: oregon
     plan: starter
     maxmemoryPolicy: allkeys-lru
-    ipAllowList:
+    ipWhitelist:
       - source: 0.0.0.0/0
-        description: Allow all
+        description: "Allow all"
 
   - type: web
     name: freelance-agents-marketplace-api
@@ -21,7 +21,6 @@ services:
     branch: main
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    dockerCommand: npm start
     healthCheckPath: /health
     autoDeploy: true
     envVars:
