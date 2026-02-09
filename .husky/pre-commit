@@ -1,0 +1,46 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# Frontend checks
+echo "📦 Checking frontend..."
+cd frontend
+echo "  - Running linter..."
+npm run lint -- --quiet || {
+  echo "❌ Frontend linting failed"
+  exit 1
+}
+
+echo "  - Running type check..."
+npm run type-check || {
+  echo "❌ Frontend type check failed"
+  exit 1
+}
+
+echo "  - Running unit tests..."
+npm run test:run || {
+  echo "❌ Frontend tests failed"
+  exit 1
+}
+
+cd ..
+
+# Backend checks
+echo "📦 Checking backend..."
+cd backend
+echo "  - Running linter..."
+npm run lint || {
+  echo "❌ Backend linting failed"
+  exit 1
+}
+
+echo "  - Running unit tests..."
+npm test -- --passWithNoTests || {
+  echo "❌ Backend tests failed"
+  exit 1
+}
+
+cd ..
+
+echo "✅ All pre-commit checks passed!"

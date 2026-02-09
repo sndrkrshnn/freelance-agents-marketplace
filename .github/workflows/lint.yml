@@ -1,0 +1,231 @@
+name: Fast Lint
+
+on:
+  push:
+    branches: '**'
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  backend-lint:
+    name: Backend - Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Cache ESLint cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/.eslintcache
+            backend/node_modules/.cache
+          key: ${{ runner.os }}-eslint-backend-${{ hashFiles('backend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-eslint-backend-
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci --prefer-offline --no-audit
+      
+      - name: Run ESLint
+        working-directory: ./backend
+        run: npm run lint -- --cache --cache-location .eslintcache
+        continue-on-error: false
+
+  backend-format:
+    name: Backend - Prettier Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci --prefer-offline --no-audit
+      
+      - name: Run Prettier check
+        working-directory: ./backend
+        run: npm run format:check --if-present || echo "No format:check script"
+        continue-on-error: false
+
+  frontend-lint:
+    name: Frontend - Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Cache ESLint cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            frontend/.eslintcache
+            frontend/node_modules/.cache
+          key: ${{ runner.os }}-eslint-frontend-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-eslint-frontend-
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci --prefer-offline --no-audit
+      
+      - name: Run ESLint
+        working-directory: ./frontend
+        run: npm run lint
+      
+      - name: Check for unused ESLint directives
+        working-directory: ./frontend
+        run: npx eslint-check .src 2>&1 || echo "No unused directives check"
+
+  frontend-typescript:
+    name: Frontend - TypeScript Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Cache TypeScript
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules/.cache
+          key: ${{ runner.os }}-tsc-frontend-${{ hashFiles('frontend/tsconfig.json', 'frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-tsc-frontend-
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci --prefer-offline --no-audit
+      
+      - name: Run TypeScript type check
+        working-directory: ./frontend
+        run: npm run type-check
+      
+      - name: Check for any TypeScript errors
+        working-directory: ./frontend
+        run: |
+          if ! npm run type-check; then
+            echo "❌ TypeScript errors found!"
+            exit 1
+          fi
+          echo "✅ TypeScript check passed"
+
+  frontend-format:
+    name: Frontend - Prettier Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci --prefer-offline --no-audit
+      
+      - name: Run Prettier check
+        working-directory: ./frontend
+        run: npm run format:check --if-present || npx prettier --check "src/**/*.{ts,tsx,json,css,md}"
+        continue-on-error: false
+
+  # ============================================
+  # Summary & Status
+  # ============================================
+  lint-summary:
+    name: Lint Summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    needs: [backend-lint, backend-format, frontend-lint, frontend-typescript, frontend-format]
+    if: always()
+    
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 🔍 Quick Lint Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Lint | ${{ needs.backend-lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Format | ${{ needs.backend-format.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Lint | ${{ needs.frontend-lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend TypeScript | ${{ needs.frontend-typescript.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Format | ${{ needs.frontend-format.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.backend-lint.result }}" != "success" ] || \
+             [ "${{ needs.frontend-lint.result }}" != "success" ] || \
+             [ "${{ needs.frontend-typescript.result }}" != "success" ]; then
+            echo "❌ **Lint checks failed! Please fix the issues before merging.**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ **All lint checks passed!**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ============================================
+  # Status Check (Required for PR merging)
+  # ============================================
+  status-check:
+    name: Lint Status Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    needs: [backend-lint, backend-format, frontend-lint, frontend-typescript, frontend-format]
+    
+    steps:
+      - name: Check all lint jobs
+        run: |
+          if [ "${{ needs.backend-lint.result }}" != "success" ] || \
+             [ "${{ needs.backend-format.result }}" != "success" ] || \
+             [ "${{ needs.frontend-lint.result }}" != "success" ] || \
+             [ "${{ needs.frontend-typescript.result }}" != "success" ] || \
+             [ "${{ needs.frontend-format.result }}" != "success" ]; then
+            echo "❌ Lint checks failed. Blocking merge."
+            exit 1
+          fi
+          echo "✅ All lint checks passed. Merge allowed."

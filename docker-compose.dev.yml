@@ -1,0 +1,219 @@
+# ============================================
+# Docker Compose - Development Override
+# Freelance AI Agents Marketplace
+# ============================================
+#
+# This file extends docker-compose.yml with development-specific configurations.
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Features:
+# - Hot-reloading for both backend and frontend
+# - Volume mounts for live code changes
+# - Debug ports exposed
+# - Development-specific environment variables
+# - Enhanced logging
+# ============================================
+
+version: '3.8'
+
+# Override backend service for development
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: development
+    image: freelance-marketplace-backend:dev
+    container_name: freelance-marketplace-backend-dev
+    
+    # Development environment variables
+    environment:
+      NODE_ENV: development
+      # Enable debug logging
+      DEBUG: freelance-marketplace:*
+      # CORS for development
+      CORS_ORIGIN: "*"
+      # Disable features in dev
+      DISABLE_RATE_LIMIT: "true"
+    
+    # Volume mounts for hot-reloading
+    volumes:
+      # Mount entire backend source for hot-reload
+      - ./backend/src:/app/src:rw
+      - ./backend/tests:/app/tests:rw
+      - ./backend/package.json:/app/package.json:ro
+      # Keep logs accessible
+      - backend_logs:/app/logs
+      - ./uploads:/app/uploads:rw
+    
+    # Expose debug ports
+    ports:
+      - "5000:5000"   # API
+      - "9229:9229"   # Node.js debugger
+    
+    # Override command to use nodemon for hot-reload
+    command: npx nodemon --legacy-watch --inspect=0.0.0.0:9229 src/server.js
+    
+    # Disable health check during development (nodemon startup varies)
+    healthcheck:
+      disable: true
+    
+    # Increased resource limits for development
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1.5G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Enhanced logging for development
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  # Override frontend service for development
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:5000/api
+        VITE_APP_NAME: "Freelance AI Marketplace (DEV)"
+        VITE_APP_VERSION: "dev"
+    image: freelance-marketplace-frontend:dev
+    container_name: freelance-marketplace-frontend-dev
+    
+    # Volume mounts for hot-reloading
+    volumes:
+      # Vite supports HMR with source mounts
+      - ./frontend/src:/app/src:rw
+      - ./frontend/public:/app/public:rw
+      - ./frontend/index.html:/app/index.html:ro
+      - ./frontend/package.json:/app/package.json:ro
+      - ./frontend/vite.config.ts:/app/vite.config.ts:ro
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js:ro
+      - ./frontend/tsconfig.json:/app/tsconfig.json:ro
+      - ./frontend/postcss.config.js:/app/postcss.config.js:ro
+    
+    # Expose Vite dev server port
+    ports:
+      - "3000:3000"
+      - "24678:24678"  # Vite HMR WebSocket
+    
+    # Override command to run Vite dev server
+    command: npm run dev -- --host 0.0.0.0 --port 3000
+    
+    # Disable health check - Vite dev server
+    healthcheck:
+      disable: true
+    
+    # Environment variables for Vite
+    environment:
+      VITE_API_BASE_URL: http://localhost:5000/api
+    
+    # Enhanced logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # Override nginx for development
+  # In dev, we can choose to use nginx or access services directly
+  nginx:
+    # Disable nginx in development for direct access
+    profiles:
+      - with-nginx
+    
+    ports:
+      - "80:80"
+      - "443:443"
+
+  # Additional service: Database Admin (pgAdmin)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: freelance-marketplace-pgadmin
+    restart: unless-stopped
+    
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@freelance.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    
+    networks:
+      - backend
+    
+    ports:
+      - "8080:80"
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Additional service: Redis Commander
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: freelance-marketplace-redis-commander
+    restart: unless-stopped
+    
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    
+    networks:
+      - backend
+    
+    ports:
+      - "8081:8081"
+    
+    depends_on:
+      redis:
+        condition: service_healthy
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Additional service: Mailhog for email testing
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: freelance-marketplace-mailhog
+    restart: unless-stopped
+    
+    networks:
+      - backend
+    
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Disable watchtower in development
+  watchtower:
+    profiles:
+      - disabled
+
+# Additional volumes for development
+volumes:
+  pgadmin_data:
+    driver: local

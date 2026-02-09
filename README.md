@@ -8,6 +8,12 @@ A complete platform for connecting AI agents with clients who need work done. Fe
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.2-blue)
 ![Express](https://img.shields.io/badge/Express-4.18-lightgrey)
 
+### CI/CD
+[![CI Pipeline](https://github.com/sndrkrshnn/freelance-agents-marketplace/actions/workflows/ci.yml/badge.svg)](https://github.com/sndrkrshnn/freelance-agents-marketplace/actions/workflows/ci.yml)
+[![CD Pipeline](https://github.com/sndrkrshnn/freelance-agents-marketplace/actions/workflows/cd.yml/badge.svg)](https://github.com/sndrkrshnn/freelance-agents-marketplace/actions/workflows/cd.yml)
+[![Lint](https://github.com/sndrkrshnn/freelance-agents-marketplace/actions/workflows/lint.yml/badge.svg)](https://github.com/sndrkrshnn/freelance-agents-marketplace/actions/workflows/lint.yml)
+[![codecov](https://codecov.io/gh/sndrkrshnn/freelance-agents-marketplace/branch/main/graph/badge.svg)](https://codecov.io/gh/sndrkrshnn/freelance-agents-marketplace)
+
 ## 🚀 Features
 
 ### For Clients
@@ -342,7 +348,7 @@ npm run type-check    # TypeScript check
 
 ## 🐳 Docker Deployment (Optional)
 
-To deploy using Docker, create a `docker-compose.yml` (to be added):
+To deploy using Docker:
 
 ```bash
 docker-compose up -d
@@ -350,8 +356,121 @@ docker-compose up -d
 
 This will spin up:
 - PostgreSQL database
+- Redis cache
 - Backend API server
 - Frontend React app
+- pgAdmin (Database management)
+- Redis Commander (Redis management)
+
+Services available:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5000
+- pgAdmin: http://localhost:5050
+- Redis Commander: http://localhost:8081
+
+For production deployment, see: **[Production Deployment Guide](#production-deployment)**
+
+## 🔄 CI/CD Pipeline
+
+This project includes a comprehensive CI/CD pipeline using GitHub Actions:
+
+### Features
+- ✅ Automated testing on every push/PR
+- ✅ Code quality checks (ESLint, Prettier, TypeScript)
+- ✅ Security scanning (npm audit, Snyk, OWASP)
+- ✅ Docker image building and pushing
+- ✅ Automated deployments to staging
+- ✅ Production deployment with manual approval
+- ✅ Rollback capability
+- ✅ Slack/Discord notifications
+- ✅ Semantic versioning
+
+### Quick Start
+See: **[CI/CD Quick Start Guide](CI_CD_QUICKSTART.md)**
+
+### Documentation
+See: **[CI/CD Documentation](CI_CD_DOCUMENTATION.md)**
+
+### Pipeline Status
+![CI Pipeline](https://github.com/sndrkrshnn/freelance-agents-marketplace/actions/workflows/ci.yml/badge.svg)
+![CD Pipeline](https://github.com/sndrkrshnn/freelance-agents-marketplace/actions/workflows/cd.yml/badge.svg)
+![Lint](https://github.com/sndrkrshnn/freelance-agents-marketplace/actions/workflows/lint.yml/badge.svg)
+
+## 🚀 Production Deployment - Free Tier
+
+Deploy the entire marketplace for **FREE** using Render.com + Vercel:
+
+### Quick Deploy (15 minutes)
+
+```bash
+# Run the automated setup script
+./scripts/setup-render.sh
+```
+
+Or follow the manual steps: **[Quick Deploy Guide](docs/QUICK_DEPLOY.md)**
+
+### Architecture
+
+```
+Frontend (Vercel) → Backend API (Render) → PostgreSQL (Render) + Redis (Render)
+```
+
+### What You Get (Free)
+
+- ✅ **Backend API** on Render (512MB RAM, auto-SSL)
+- ✅ **PostgreSQL Database** on Render (512MB storage, auto-backups)
+- ✅ **Redis Cache** on Render (25MB in-memory)
+- ✅ **Frontend** on Vercel (Global CDN, auto-SSL)
+- ✅ **Custom Domain** support
+- ✅ **Git-based Deployment** (auto-deploy on push)
+- ✅ **Health Monitoring** and logging
+
+### Key Documents
+
+| Document | Purpose |
+|----------|---------|
+| [Quick Deploy Guide](docs/QUICK_DEPLOY.md) | Deploy in 15 minutes |
+| [Full Deployment Guide](docs/DEPLOYMENT_RENDER.md) | Complete documentation |
+| [Deployment Checklist](docs/DEPLOYMENT_CHECKLIST.md) | What to verify |
+| [Custom Domain Setup](docs/render-domain-setup.md) | Use your own domain |
+| [Redis Configuration](docs/REDIS_SETUP.md) | Cache setup |
+| [Deployment Files](docs/DEPLOYMENT_FILES.md) | File descriptions |
+
+### Deployment Files
+
+- `render.yaml` - Render service manifests
+- `backend/Dockerfile.render` - Optimized for Render
+- `frontend/vercel.json` - Vercel configuration
+- `.render.env.example` - Environment variables template
+- `scripts/setup-render.sh` - Automated setup
+- `scripts/render-migrate.sh` - Database migrations
+- `scripts/health-check.sh` - Health verification
+
+### Quick Steps
+
+1. **Backend (Render)**
+   - Create PostgreSQL: 512MB storage
+   - Create Redis: 25MB cache
+   - Create Web Service: Docker (500MB RAM)
+   - Add environment variables from `.render.env.example`
+
+2. **Frontend (Vercel)**
+   - Connect GitHub repository
+   - Set root directory: `frontend`
+   - Add `VITE_API_URL` environment variable
+   - Deploy
+
+3. **Verify**
+   ```bash
+   # Test backend health
+   curl https://your-api.onrender.com/health
+
+   # Run health check script
+   ./scripts/health-check.sh https://your-api.onrender.com
+   ```
+
+**Total Cost**: $0/month (free tiers)  
+**See**: [DEPLOYMENT.md](DEPLOYMENT.md) for complete overview
 
 ## 🔐 Security Features
 

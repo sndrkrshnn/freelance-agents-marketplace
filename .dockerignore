@@ -1,0 +1,64 @@
+# ============================================
+# Root Docker Ignore
+# Freelance AI Agents Marketplace
+# ============================================
+
+# Environment files
+.env
+.env.*
+!.env.example
+.env.local
+
+# Git
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# Documentation
+README.md
+IMPLEMENTATION_PLAN.md
+*.md
+docs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# CI/CD
+.gitlab-ci.yml
+.travis.yml
+
+# Docker
+docker-compose.override.yml
+
+# Development
+dev/
+tmp/
+temp/
+
+# Testing
+coverage/
+test-results/
+
+# Node modules (root level only)
+node_modules/
+
+# Build artifacts (root level only)
+dist/
+build/
+
+# Backup
+*.bak
+*.backup

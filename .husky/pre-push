@@ -1,0 +1,45 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🔍 Running pre-push checks..."
+echo "📝 Running full test suite..."
+
+# Frontend tests with coverage
+echo "📦 Running frontend test suite with coverage..."
+cd frontend
+npm run test:coverage || {
+  echo "❌ Frontend tests with coverage failed"
+  exit 1
+}
+
+echo "📊 Frontend coverage meets thresholds ✅"
+cd ..
+
+# Backend tests with coverage
+echo "📦 Running backend test suite with coverage..."
+cd backend
+npm test -- --coverage || {
+  echo "❌ Backend tests with coverage failed"
+  exit 1
+}
+
+echo "📊 Backend coverage meets thresholds ✅"
+cd ..
+
+# E2E tests (optional, can be skipped with SKIP_E2E=true)
+if [ "$SKIP_E2E" != "true" ]; then
+  echo "🌐 Running E2E tests..."
+  cd frontend
+  npm run test:e2e || {
+    echo "❌ E2E tests failed"
+    echo "💡 Tip: Use SKIP_E2E=true to skip E2E tests during push"
+    exit 1
+  }
+  echo "🎯 E2E tests passed ✅"
+  cd ..
+else
+  echo "⏭️  Skipping E2E tests (SKIP_E2E=true)"
+fi
+
+echo "✅ All pre-push checks passed!"
+echo "🚀 Ready to push!"

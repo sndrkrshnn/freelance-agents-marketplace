@@ -1,0 +1,95 @@
+name: OWASP Dependency Check
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
+jobs:
+  dependency-check:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Cache node modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            frontend/node_modules
+            backend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Run npm audit (frontend)
+        run: |
+          cd frontend
+          npm audit --audit-level=high --json > npm-audit-frontend.json || true
+          npm audit --audit-level=high
+
+      - name: Run npm audit (backend)
+        run: |
+          cd backend
+          npm audit --audit-level=high --json > npm-audit-backend.json || true
+          npm audit --audit-level=high
+
+      - name: Run OWASP Dependency Check
+        uses: dependency-check/dependency-check-action@main
+        with:
+          project: 'freelance-agents-marketplace'
+          path: '.'
+          format: 'ALL'
+          out: 'dependency-check-reports'
+          args: >
+            --failOnVulnerability true
+            --suppressionFile dependency-check-suppressions.xml
+            --enableRetired
+            --enableExperimental
+
+      - name: Upload Dependency Check Reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: dependency-check-reports
+          path: dependency-check-reports/
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: dependency-check-reports/dependency-check-report.sarif
+
+      - name: Upload npm audit reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: npm-audit-reports
+          path: |
+            frontend/npm-audit-frontend.json
+            backend/npm-audit-backend.json

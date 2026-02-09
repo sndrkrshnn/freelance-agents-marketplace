@@ -1,0 +1,152 @@
+name: Reusable Backend Tests
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: true
+        type: string
+      node-version:
+        type: string
+        default: '18'
+      run-coverage:
+        type: boolean
+        default: true
+      upload-coverage:
+        type: boolean
+        default: true
+
+    outputs:
+      test-result:
+        value: ${{ jobs.backend-test.outputs.result }}
+      coverage-percentage:
+        value: ${{ jobs.backend-test.outputs.coverage }}
+
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+      DATABASE_URL:
+        required: false
+      JWT_SECRET:
+        required: false
+      STRIPE_SECRET_KEY:
+        required: false
+
+jobs:
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      result: ${{ steps.test.outcome }}
+      coverage: ${{ steps.coverage.outputs.percentage }}
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ inputs.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: 'npm'
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          npm ci --prefer-offline --no-audit
+      
+      - name: Run linter
+        working-directory: ${{ inputs.working-directory }}
+        run: npm run lint --if-present
+        continue-on-error: true
+      
+      - name: Setup test database
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://test_user:test_password@localhost:5432/test_db' }}
+          NODE_ENV: test
+        run: |
+          npm run migrations:run || echo "No migrations configured"
+      
+      - name: Run tests
+        id: test
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://test_user:test_password@localhost:5432/test_db' }}
+          NODE_ENV: test
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'test_secret' }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY || 'sk_test_dummy' }}
+        run: |
+          if [ "${{ inputs.run-coverage }}" = "true" ]; then
+            npm test -- --coverage --verbose --maxWorkers=2
+          else
+            npm test -- --verbose --maxWorkers=2
+          fi
+      
+      - name: Extract coverage percentage
+        id: coverage
+        if: inputs.run-coverage == true
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          COVERAGE=$(cat coverage/coverage-summary.json | grep -o '"total":{[^}]*}' | grep -o '"pct":[0-9.]*' | cut -d':' -f2)
+          COVERAGE=${COVERAGE:-0}
+          echo "percentage=${COVERAGE}" >> $GITHUB_OUTPUT
+          echo "Coverage: ${COVERAGE}%"
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: inputs.upload-coverage == true && steps.test.outcome == 'success'
+        with:
+          files: ${{ inputs.working-directory }}/coverage/lcov.info
+          flags: backend
+          name: backend-tests
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
+      
+      - name: Archive coverage reports
+        uses: actions/upload-artifact@v4
+        if: inputs.run-coverage == true
+        with:
+          name: backend-coverage-reports
+          path: ${{ inputs.working-directory }}/coverage/
+          retention-days: 7
+      
+      - name: Generate coverage badge
+        if: inputs.run-coverage == true
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          COVERAGE=${{ steps.coverage.outputs.percentage }}
+          COLOR="red"
+          if (( $(echo "$COVERAGE >= 80" | bc -l) )); then
+            COLOR="brightgreen"
+          elif (( $(echo "$COVERAGE >= 60" | bc -l) )); then
+            COLOR="yellow"
+          fi
+          
+          echo "## 📊 Coverage Badge" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "![Coverage](https://img.shields.io/badge/coverage-${COVERAGE}%25-${COLOR})" >> $GITHUB_STEP_SUMMARY
+          
+          if [ ! -z "$(which bc)" ]; then
+            :
+          else
+            COVERAGE="0"
+          fi
+        continue-on-error: true

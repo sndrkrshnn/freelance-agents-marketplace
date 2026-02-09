@@ -1,0 +1,99 @@
+# ============================================
+# Render-Optimized Backend Dockerfile
+# Freelance AI Agents Marketplace
+# Optimized for Render Free Tier (512MB RAM)
+# ============================================
+
+# Stage 1: Dependencies
+FROM node:18-alpine AS deps
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install production dependencies only
+# This reduces image size significantly
+RUN npm ci --only=production --legacy-peer-deps && \
+    npm cache clean --force
+
+# Stage 2: Builder
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY package*.json ./
+
+# Copy source code
+COPY src ./src
+
+# Transpile TypeScript if needed (optional)
+# RUN npm run build
+
+# Stage 3: Runtime (Final Image)
+FROM node:18-alpine AS runner
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    dumb-init \
+    openssl \
+    tzdata \
+    curl \
+    && rm -rf /var/cache/apk/*
+
+# Set timezone to UTC
+ENV TZ=UTC
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Copy node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy application code
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/package*.json ./
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/logs /app/uploads && \
+    chown -R nodejs:nodejs /app
+
+# Set environment variables optimized for Render Free Tier
+ENV NODE_ENV=production \
+    PORT=5000 \
+    # Limit memory usage for 512MB RAM
+    NODE_OPTIONS="--max-old-space-size=384" \
+    # Disable npm telemetry and updates
+    NPM_CONFIG_UPDATE_NOTIFIER=false \
+    NPM_CONFIG_AUDIT=false \
+    NPM_CONFIG_FUND=false
+
+# Expose port (Render will use PORT env var)
+EXPOSE 5000
+
+# Health check for Render
+# Checks if the backend is responding
+# Render will call this endpoint periodically
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:5000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
+
+# Switch to non-root user
+USER nodejs
+
+# Use dumb-init to handle signals properly
+# This ensures graceful shutdown
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the application
+# Run migrations first, then start the server
+CMD ["sh", "-c", "echo 'Running database migrations...' && npm run migrations:run && echo 'Starting backend server...' && node src/server.js"]

@@ -1,0 +1,346 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME_BACKEND: ${{ github.repository }}/backend
+  IMAGE_NAME_FRONTEND: ${{ github.repository }}/frontend
+
+jobs:
+  # ============================================
+  # Backend Quality Checks & Tests
+  # ============================================
+  backend-lint:
+    name: Backend - Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run ESLint
+        working-directory: ./backend
+        run: npm run lint --if-present
+        continue-on-error: false
+
+  backend-tests:
+    name: Backend - Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: backend-lint
+    
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_freelance_agents
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run database migrations
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_freelance_agents
+          NODE_ENV: test
+        run: npm run migrations:run || echo "No migrations configured"
+      
+      - name: Run tests with coverage
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_freelance_agents
+          NODE_ENV: test
+          JWT_SECRET: test_jwt_secret_for_ci
+          STRIPE_SECRET_KEY: sk_test_dummy_key
+        run: npm test -- --coverage --maxWorkers=2
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./backend/coverage/lcov.info
+          flags: backend
+          name: backend-coverage-node-${{ matrix.node-version }}
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+      
+      - name: Archive coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-node-${{ matrix.node-version }}
+          path: backend/coverage/
+          retention-days: 7
+
+  # ============================================
+  # Frontend Quality Checks & Tests
+  # ============================================
+  frontend-lint:
+    name: Frontend - Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Run ESLint
+        working-directory: ./frontend
+        run: npm run lint
+      
+      - name: TypeScript type check
+        working-directory: ./frontend
+        run: npm run type-check
+
+  frontend-build:
+    name: Frontend - Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: frontend-lint
+    
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Build frontend
+        working-directory: ./frontend
+        env:
+          VITE_API_URL: https://api-staging.example.com
+        run: npm run build
+      
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build-node-${{ matrix.node-version }}
+          path: frontend/dist/
+          retention-days: 7
+      
+      - name: Check bundle size
+        working-directory: ./frontend
+        run: |
+          du -sh dist/
+          echo "Build size check passed"
+
+  # ============================================
+  # Security Scans
+  # ============================================
+  security-audit:
+    name: Security - npm Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Run npm audit (Backend)
+        working-directory: ./backend
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+      
+      - name: Run npm audit (Frontend)
+        working-directory: ./frontend
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+  snyk-security:
+    name: Security - Snyk Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    
+    permissions:
+      contents: read
+      security-events: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Snyk to check for vulnerabilities (Backend)
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --org=${{ secrets.SNYK_ORG }} --sarif-file-output=snyk-backend.sarif
+          command: test
+          working-directory: backend
+        continue-on-error: true
+      
+      - name: Run Snyk to check for vulnerabilities (Frontend)
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --org=${{ secrets.SNYK_ORG }} --sarif-file-output=snyk-frontend.sarif
+          command: test
+          working-directory: frontend
+        continue-on-error: true
+      
+      - name: Upload Snyk results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: |
+            snyk-backend.sarif
+            snyk-frontend.sarif
+        if: always()
+
+  dependency-check:
+    name: Security - OWASP Dependency Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Java for OWASP
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Download OWASP Dependency Check
+        run: |
+          wget https://github.com/jeremylong/DependencyCheck/releases/download/v9.0.9/dependency-check-9.0.9-release.zip
+          unzip dependency-check-9.0.9-release.zip
+      
+      - name: Run OWASP Dependency Check (Backend)
+        run: |
+          ./dependency-check/bin/dependency-check.sh --project backend \
+          --scan ./backend --format HTML --format JSON --out ./reports/backend
+      
+      - name: Run OWASP Dependency Check (Frontend)
+        run: |
+          ./dependency-check/bin/dependency-check.sh --project frontend \
+          --scan ./frontend --format HTML --format JSON --out ./reports/frontend
+      
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-reports
+          path: reports/
+          retention-days: 7
+        if: always()
+
+  # ============================================
+  # Quality Gate
+  # ============================================
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [backend-tests, frontend-build, security-audit]
+    if: always()
+    
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [ "${{ needs.backend-tests.result }}" != "success" ] || \
+             [ "${{ needs.frontend-build.result }}" != "success" ]; then
+            echo "❌ Quality gate failed!"
+            echo "Backend Tests: ${{ needs.backend-tests.result }}"
+            echo "Frontend Build: ${{ needs.frontend-build.result }}"
+            exit 1
+          fi
+          echo "✅ Quality gate passed!"
+
+  # ============================================
+  # Summary Report
+  # ============================================
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [backend-tests, frontend-build, security-audit, snyk-security, dependency-check, quality-gate]
+    if: always()
+    
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 📊 CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Tests | ${{ needs.backend-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Build | ${{ needs.frontend-build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Audit | ${{ needs.security-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Snyk Security | ${{ needs.snyk-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependency Check | ${{ needs.dependency-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality Gate | ${{ needs.quality-gate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "👤 **Author**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY

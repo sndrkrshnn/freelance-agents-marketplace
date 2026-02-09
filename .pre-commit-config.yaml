@@ -1,0 +1,167 @@
+# Pre-commit configuration for Freelance AI Agents Marketplace
+# Install pre-commit: pip install pre-commit
+# Initialize: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # ============================================
+  # General file formatting
+  # ============================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+      - id: no-commit-to-branch
+        args: [--branch, main]
+      - id: check-toml
+
+  # ============================================
+  # Shell script linting
+  # ============================================
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        args: [--severity=warning]
+
+  # ============================================
+  # Markdown linting
+  # ============================================
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.37.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+        exclude: ^node_modules/
+
+  # ============================================
+  # YAML formatting
+  # ============================================
+  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.11.0
+    hooks:
+      - id: pretty-format-yaml
+        args: [--autofix, --indent, '2', --offset, '2']
+      - id: pretty-format-toml
+        args: [--autofix, --indent, '2']
+
+  # ============================================
+  # Backend checks
+  # ============================================
+  - repo: local
+    hooks:
+      - id: backend-eslint
+        name: Backend - ESLint
+        entry: bash -c 'cd backend && npm run lint'
+        language: system
+        files: \.js$
+        pass_filenames: false
+        types: [javascript]
+
+      - id: backend-prettier
+        name: Backend - Prettier
+        entry: bash -c 'cd backend && npx prettier --write "**/*.js"'
+        language: system
+        files: \.js$
+        types: [javascript]
+
+      - id: backend-package-json
+        name: Backend - Validate package.json
+        entry: bash -c 'cd backend && npx validate-package-json'
+        language: system
+        files: ^backend/package\.json$
+        pass_filenames: false
+
+  # ============================================
+  # Frontend checks
+  # ============================================
+  - repo: local
+    hooks:
+      - id: frontend-eslint
+        name: Frontend - ESLint
+        entry: bash -c 'cd frontend && npm run lint'
+        language: system
+        files: \.(ts|tsx)$
+        types: [typescript]
+        pass_filenames: false
+
+      - id: frontend-typescript
+        name: Frontend - TypeScript Check
+        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        language: system
+        files: \.(ts|tsx)$
+        types: [typescript]
+        pass_filenames: false
+
+      - id: frontend-prettier
+        name: Frontend - Prettier
+        entry: bash -c 'cd frontend && npx prettier --write "src/**/*.{ts,tsx,css,md}"'
+        language: system
+        files: \.(ts|tsx|css|md)$
+
+      - id: frontend-package-json
+        name: Frontend - Validate package.json
+        entry: bash -c 'cd frontend && npx validate-package-json'
+        language: system
+        files: ^frontend/package\.json$
+        pass_filenames: false
+
+  # ============================================
+  # Dockerfile linting
+  # ============================================
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        args: [--ignore, DL3008]  # Ignore warning about pinning versions in apt
+        files: ^.*Dockerfile$
+
+  # ============================================
+  # CI/CD YAML validation
+  # ============================================
+  - repo: local
+    hooks:
+      - id: github-actions-lint
+        name: GitHub Actions - Lint
+        entry: bash -c 'if command -v actionlint &> /dev/null; then actionlint .github/workflows/*.yml; else echo "actionlint not installed, skipping"; fi'
+        language: system
+        files: \.github/workflows/.*\.yml$
+
+  # ============================================
+  # Security checks
+  # ============================================
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: ^(package-lock\.json|yarn\.lock|\.env.*|node_modules/)
+
+  # ============================================
+  # Custom hooks
+  # ============================================
+  - repo: local
+    hooks:
+      - id: check-environment-variables
+        name: Check for hardcoded secrets
+        entry: bash -c 'grep -r "SECRET_KEY\|PASSWORD\|API_KEY" --include="*.js" --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.git . | grep -v "//" && echo "Found hardcoded secrets!" && exit 1 || exit 0'
+        language: system
+        files: \.(js|ts|tsx)$
+
+      - id: check-console-log
+        name: Check for console.log statements
+        entry: bash -c 'grep -r "console\.log\|console\.debug" --include="*.tsx" --include="*.ts" --exclude-dir=node_modules frontend/src | grep -v "//" | grep -v "/test" | grep -v "/spec" && echo "Found console.log statements in production code" && exit 0'
+        language: system
+        files: \.(ts|tsx)$
+        types: [typescript]

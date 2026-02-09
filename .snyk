@@ -1,0 +1,39 @@
+# Snyk Configuration File
+# See: https://docs.snyk.io/features/snyk-code-configuration/rule-exclusions
+
+# Exclude specific files/directories from scanning
+exclude:
+  # Test files
+  - '**/*.test.js'
+  - '**/*.test.ts'
+  - '**/*.test.tsx'
+  - '**/*.spec.js'
+  - '**/*.spec.ts'
+  - '**/__tests__/**'
+  - '**/tests/**'
+  - '**/e2e/**'
+
+  # Build outputs
+  - '**/dist/**'
+  - '**/build/**'
+  - '**/coverage/**'
+
+  # Configuration files
+  - '**/*.config.js'
+  - '**/*.config.ts'
+
+  # Node modules
+  - '**/node_modules/**'
+
+# Exclude specific rules
+# See: https://snyk.io/docs/rules/
+ignore:
+  # Example: Ignore specific code rules
+  # SNYK-JS-TYPESCRIPT-560133:
+
+# Severity thresholds
+severity:
+  # Block issues with CVSS >= 7 (High and Critical)
+  high: 'high'
+  # Don't block issues with CVSS < 7 (Low and Medium)
+  low: 'low'

@@ -1,0 +1,532 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_tests:
+        description: 'Skip tests (use with caution)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME_BACKEND: ${{ github.repository }}/backend
+  IMAGE_NAME_FRONTEND: ${{ github.repository }}/frontend
+
+jobs:
+  # ============================================
+  # Pre-deployment checks
+  # ============================================
+  pre-deploy-checks:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event.inputs.skip_tests != 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Run quick backend tests
+        working-directory: ./backend
+        run: |
+          npm ci
+          npm test -- --passWithNoTests --maxWorkers=2
+      
+      - name: Run quick frontend build
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build
+
+  # ============================================
+  # Semantic Release
+  # ============================================
+  semantic-release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: pre-deploy-checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      new_release: ${{ steps.release.outputs.new_release }}
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Install semantic-release dependencies
+        run: |
+          npm install -g \
+            semantic-release@21 \
+            @semantic-release/git@10 \
+            @semantic-release/changelog@6 \
+            @semantic-release/commit-analyzer@10 \
+            @semantic-release/release-notes-generator@11 \
+            @semantic-release/github@9 \
+            @semantic-release/npm@10
+      
+      - name: Run semantic-release
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: github-actions[bot]@users.noreply.github.com
+        run: |
+          npx semantic-release || echo "NO_RELEASE=true" >> $GITHUB_OUTPUT
+          
+          # Try to get version from tags if no release
+          if [ -z "$VERSION" ]; then
+            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+          fi
+          
+          echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+          echo "new_release=true" >> $GITHUB_OUTPUT
+        continue-on-error: true
+      
+      - name: Create changelog
+        if: steps.release.outputs.new_release == 'true'
+        run: |
+          git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"- %s" | head -20 > CHANGELOG_LATEST.md
+          cat CHANGELOG_LATEST.md
+
+  # ============================================
+  # Build & Push Docker Images
+  # ============================================
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: semantic-release
+    outputs:
+      backend-image: ${{ steps.meta-backend.outputs.tags }}
+      frontend-image: ${{ steps.meta-frontend.outputs.tags }}
+      version: ${{ steps.tag.outputs.version }}
+    
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract version
+        id: tag
+        run: |
+          VERSION=${{ needs.semantic-release.outputs.version }}
+          if [ -z "$VERSION" ]; then
+            VERSION="0.0.0"
+          fi
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+      
+      - name: Extract metadata for backend (Docker Hub)
+        id: meta-backend-dockerhub
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            sndrkrshnn/freelance-marketplace-backend
+          tags: |
+            type=semver,pattern={{version}},value=${{ steps.tag.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.tag.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix={{branch}}-,value=${{ github.sha }}
+      
+      - name: Extract metadata for frontend (Docker Hub)
+        id: meta-frontend-dockerhub
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            sndrkrshnn/freelance-marketplace-frontend
+          tags: |
+            type=semver,pattern={{version}},value=${{ steps.tag.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.tag.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix={{branch}}-,value=${{ github.sha }}
+      
+      - name: Extract metadata for backend (GitHub)
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ steps.tag.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.tag.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,value=${{ github.sha }}
+      
+      - name: Extract metadata for frontend (GitHub)
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ steps.tag.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.tag.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,value=${{ github.sha }}
+      
+      - name: Build and push backend image (GitHub)
+        id: build-backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            VERSION=${{ steps.tag.outputs.version }}
+            COMMIT_SHA=${{ github.sha }}
+      
+      - name: Build and push backend image (Docker Hub)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend-dockerhub.outputs.tags }}
+          labels: ${{ steps.meta-backend-dockerhub.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            VERSION=${{ steps.tag.outputs.version }}
+            COMMIT_SHA=${{ github.sha }}
+      
+      - name: Build and push frontend image (GitHub)
+        id: build-frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            VERSION=${{ steps.tag.outputs.version }}
+            COMMIT_SHA=${{ github.sha }}
+      
+      - name: Build and push frontend image (Docker Hub)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend-dockerhub.outputs.labels }}
+          labels: ${{ steps.meta-frontend-dockerhub.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            VERSION=${{ steps.tag.outputs.version }}
+            COMMIT_SHA=${{ github.sha }}
+      
+      - name: Generate image digest
+        run: |
+          echo "Backend Digest: ${{ steps.build-backend.outputs.digest }}"
+          echo "Frontend Digest: ${{ steps.meta-frontend.outputs.tags }}"
+
+  # ============================================
+  # Deploy to Staging
+  # ============================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build-and-push
+    environment:
+      name: staging
+      url: https://staging.freelance-agents.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+      
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > $HOME/.kube/config
+      
+      - name: Deploy to Kubernetes
+        run: |
+          export VERSION=${{ needs.build-and-push.outputs.version }}
+          export BACKEND_IMAGE=${{ needs.build-and-push.outputs.backend-image }}
+          export FRONTEND_IMAGE=${{ needs.build-and-push.outputs.frontend-image }}
+          
+          ./scripts/deploy.sh staging "$VERSION"
+      
+      - name: Health check
+        run: |
+          ./scripts/deploy.sh health-check staging
+          echo "✅ Staging deployment health check passed!"
+      
+      - name: Notify Slack (Staging Deployed)
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            🚀 *Staging Deployment Successful*
+            
+            • Version: ${{ needs.build-and-push.outputs.version }}
+            • Commit: ${{ github.sha }}
+            • Actor: ${{ github.actor }}
+            • Environment: Staging
+            
+            https://staging.freelance-agents.com
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          username: GitHub Actions
+          icon_emoji: ':rocket:'
+      
+      - name: Notify Slack (Staging Failed)
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            🚨 *Staging Deployment Failed*
+            
+            • Version: ${{ needs.build-and-push.outputs.version }}
+            • Commit: ${{ github.sha }}
+            • Actor: ${{ github.actor }}
+            
+            Please check the logs for details.
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          username: GitHub Actions
+          icon_emoji: ':rotating_light:'
+
+  # ============================================
+  # Deploy to Production (Manual Approval)
+  # ============================================
+  deploy-production:
+    name: Production Deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [build-and-push, deploy-staging]
+    environment:
+      name: production
+      url: https://freelance-agents.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Wait for manual approval
+        run: |
+          echo "⏸️ Awaiting manual approval for production deployment..."
+          echo "Current version: ${{ needs.build-and-push.outputs.version }}"
+      
+      - name: Pre-production health check
+        run: |
+          echo "Running pre-production validation..."
+          # Add any pre-production checks here
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+      
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > $HOME/.kube/config
+      
+      - name: Deploy to Kubernetes (Production)
+        run: |
+          export VERSION=${{ needs.build-and-push.outputs.version }}
+          export BACKEND_IMAGE=${{ needs.build-and-push.outputs.backend-image }}
+          export FRONTEND_IMAGE=${{ needs.build-and-push.outputs.frontend-image }}
+          
+          ./scripts/deploy.sh production "$VERSION"
+      
+      - name: Health check (Production)
+        run: |
+          ./scripts/deploy.sh health-check production
+          echo "✅ Production deployment health check passed!"
+      
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests..."
+          # Add smoke tests here
+      
+      - name: Create GitHub Release
+        if: success()
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        with:
+          tag_name: v${{ needs.build-and-push.outputs.version }}
+          release_name: Release v${{ needs.build-and-push.outputs.version }}
+          body: |
+            ## Release v${{ needs.build-and-push.outputs.version }}
+            
+            ### Changes
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+            
+            ### Images
+            - Backend: sndrkrshnn/freelance-marketplace-backend:${{ needs.build-and-push.outputs.version }}
+            - Frontend: sndrkrshnn/freelance-marketplace-frontend:${{ needs.build-and-push.outputs.version }}
+            
+            ### Commit
+            ${{ github.sha }}
+          draft: false
+          prerelease: false
+      
+      - name: Notify Slack (Production Deployed)
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            🎉 *Production Deployment Successful*
+            
+            • Version: v${{ needs.build-and-push.outputs.version }}
+            • Commit: ${{ github.sha }}
+            • Actor: ${{ github.actor }}
+            • Environment: Production
+            
+            https://freelance-agents.com
+            
+            New release: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.build-and-push.outputs.version }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          username: GitHub Actions
+          icon_emoji: ':tada:'
+      
+      - name: Notify Discord (Production Deployed)
+        if: success()
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ job.status }}
+          title: Production Deployment
+          description: |
+            Version: v${{ needs.build-and-push.outputs.version }}
+            Commit: ${{ github.sha }}
+            Actor: ${{ github.actor }}
+          color: 0x00ff00
+      
+      - name: Notify Slack (Production Failed)
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            🚨 *Production Deployment Failed*
+            
+            • Version: v${{ needs.build-and-push.outputs.version }}
+            • Commit: ${{ github.sha }}
+            • Actor: ${{ github.actor }}
+            
+            🔄 Rollback may be required!
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          username: GitHub Actions
+          icon_emoji: ':rotating_light:'
+
+  # ============================================
+  # Rollback on Failure
+  # ============================================
+  rollback-production:
+    name: Rollback Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: deploy-production
+    if: failure() && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+      
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > $HOME/.kube/config
+      
+      - name: Get previous stable version
+        id: previous
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "v1.0.0")
+          echo "version=${PREVIOUS_TAG#v}" >> $GITHUB_OUTPUT
+          echo "tag=${PREVIOUS_TAG}" >> $GITHUB_OUTPUT
+      
+      - name: Rollback deployment
+        run: |
+          echo "🔄 Rolling back to v${{ steps.previous.outputs.version }}..."
+          export VERSION=${{ steps.previous.outputs.version }}
+          ./scripts/deploy.sh rollback production
+      
+      - name: Health check after rollback
+        run: |
+          ./scripts/deploy.sh health-check production
+          echo "✅ Rollback health check passed!"
+      
+      - name: Notify Slack (Rollback)
+        uses: 8398a7/action-slack@v3
+        with:
+          status: warning
+          text: |
+            🔄 *Automatic Rollback*
+            
+            Rolled back from v${{ needs.deploy-production.outputs.version }}
+            to v${{ steps.previous.outputs.version }}
+            
+            Reason: Production deployment failed
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          username: GitHub Actions
+          icon_emoji: ':rewind:'

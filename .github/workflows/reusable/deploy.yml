@@ -1,0 +1,414 @@
+name: Reusable Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      cluster-name:
+        required: true
+        type: string
+      namespace:
+        required: true
+        type: string
+      backend-image:
+        required: false
+        type: string
+      backend-tag:
+        required: false
+        type: string
+      frontend-image:
+        required: false
+        type: string
+      frontend-tag:
+        required: false
+        type: string
+      manifests-path:
+        required: false
+        type: string
+        default: ./k8s
+      run-health-check:
+        required: false
+        type: boolean
+        default: true
+      health-check-retries:
+        required: false
+        type: number
+        default: 30
+      health-check-interval:
+        required: false
+        type: number
+        default: 10
+      wait-timeout:
+        required: false
+        type: number
+        default: 300
+
+    secrets:
+      kubeconfig:
+        required: true
+      slack-webhook:
+        required: false
+      discord-webhook:
+        required: false
+      api-key:
+        required: false
+
+    outputs:
+      backend-health:
+        value: ${{ jobs.health-check.outputs.backend }}
+      frontend-health:
+        value: ${{ jobs.health-check.outputs.frontend }}
+      deploy-time:
+        value: ${{ jobs.deploy.outputs.timestamp }}
+
+jobs:
+  validate:
+    name: Validate Configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      valid: ${{ steps.validation.outputs.valid }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Kubernetes manifest validation
+        run: |
+          echo "Validating Kubernetes manifests..."
+          
+          MANIFESTS_DIR="${{ inputs.manifests-path }}/${{ inputs.environment }}"
+          
+          if [ ! -d "$MANIFESTS_DIR" ]; then
+            echo "Warning: Manifests directory not found: $MANIFESTS_DIR"
+            echo "Create it or provide the correct path"
+          fi
+          
+          # Validate YAML files
+          if command -v kubectl &> /dev/null; then
+            find "$MANIFESTS_DIR" -name "*.yaml" -o -name "*.yml" | while read -r file; do
+              kubectl --dry-run=client apply -f "$file" || echo "Failed to validate: $file"
+            done
+          else
+            echo "kubectl not available, skipping validation"
+          fi
+          continue-on-error: true
+      
+      - name: Verify configuration
+        id: validation
+        run: |
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Namespace: ${{ inputs.namespace }}"
+          echo "Cluster: ${{ inputs.cluster-name }}"
+          
+          if [ -z "${{ inputs.environment }}" ] || [ -z "${{ inputs.namespace }}" ]; then
+            echo "valid=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          echo "valid=true" >> $GITHUB_OUTPUT
+          echo "✅ Configuration validated"
+
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: validate
+    if: needs.validate.outputs.valid == 'true'
+    outputs:
+      timestamp: ${{ steps.time.outputs.timestamp }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Get current timestamp
+        id: time
+        run: |
+          echo "timestamp=$(date -u +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+      
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.kubeconfig }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+      
+      - name: Verify cluster connection
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+      
+      - name: Create namespace
+        run: |
+          kubectl create namespace ${{ inputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+      
+      - name: Apply Kubernetes manifests
+        run: |
+          MANIFESTS_DIR="${{ inputs.manifests-path }}/${{ inputs.environment }}"
+          
+          if [ -d "$MANIFESTS_DIR" ]; then
+            kubectl apply -f "$MANIFESTS_DIR/" -n ${{ inputs.namespace }}
+          else
+            echo "No manifests found at $MANIFESTS_DIR"
+          fi
+      
+      - name: Update backend image
+        if: inputs.backend-image != '' && inputs.backend-tag != ''
+        run: |
+          FULL_IMAGE="${{ inputs.backend-image }}:${{ inputs.backend-tag }}"
+          kubectl set image deployment/backend \
+            backend="$FULL_IMAGE" \
+            -n ${{ inputs.namespace }} \
+            --record
+          
+          echo "Backend image updated to: $FULL_IMAGE"
+      
+      - name: Update frontend image
+        if: inputs.frontend-image != '' && inputs.frontend-tag != ''
+        run: |
+          FULL_IMAGE="${{ inputs.frontend-image }}:${{ inputs.frontend-tag }}"
+          kubectl set image deployment/frontend \
+            frontend="$FULL_IMAGE" \
+            -n ${{ inputs.namespace }} \
+            --record
+          
+          echo "Frontend image updated to: $FULL_IMAGE"
+      
+      - name: Restart deployments (if no image update)
+        if: inputs.backend-image == '' || inputs.frontend-image == ''
+        run: |
+          kubectl rollout restart deployment/backend -n ${{ inputs.namespace }} --timeout=1m || true
+          kubectl rollout restart deployment/frontend -n ${{ inputs.namespace }} --timeout=1m || true
+      
+      - name: Wait for rollout
+        run: |
+          echo "Waiting for deployments to be ready..."
+          
+          kubectl rollout status deployment/backend -n ${{ inputs.namespace }} --timeout=${{ inputs.wait-timeout }}s || echo "Backend rollout timed out or failed"
+          kubectl rollout status deployment/frontend -n ${{ inputs.namespace }} --timeout=${{ inputs.wait-timeout }}s || echo "Frontend rollout timed out or failed"
+      
+      - name: Display deployment status
+        run: |
+          echo "## 🚀 Deployment Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Namespace:** ${{ inputs.namespace }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** ${{ steps.time.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### Deployments" >> $GITHUB_STEP_SUMMARY
+          kubectl get deployments -n ${{ inputs.namespace }} >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Pods" >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n ${{ inputs.namespace }} >> $GITHUB_STEP_SUMMARY
+
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: deploy
+    if: inputs.run-health-check == true && always()
+    outputs:
+      backend: ${{ steps.backend.result }}
+      frontend: ${{ steps.frontend.result }}
+    
+    steps:
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+      
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.kubeconfig }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+      
+      - name: Check backend health
+        id: backend
+        run: |
+          echo "Checking backend health..."
+          
+          RETRY_COUNT=0
+          MAX_RETRIES=${{ inputs.health-check-retries }}
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            READY=$(kubectl get deployment backend -n ${{ inputs.namespace }} -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+            DESIRED=$(kubectl get deployment backend -n ${{ inputs.namespace }} -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
+            
+            if [ "$READY" = "$DESIRED" ] && [ "$READY" -gt 0 ]; then
+              echo "✅ Backend is healthy (Ready: ${READY}/${DESIRED})"
+              
+              # Try to check HTTP health endpoint if configured
+              kubectl run healthcheck-backend --rm -i --restart=Never --image=curlimages/curl -- \
+                curl -f http://backend.${{ inputs.namespace }}.svc.cluster.local:5000/health || true
+              
+              exit 0
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Attempt $RETRY_COUNT/$MAX_RETRIES: Backend not ready (${READY}/${DESIRED})"
+            sleep ${{ inputs.health-check-interval }}
+          done
+          
+          echo "❌ Backend health check failed"
+          exit 1
+        continue-on-error: true
+      
+      - name: Check frontend health
+        id: frontend
+        run: |
+          echo "Checking frontend health..."
+          
+          RETRY_COUNT=0
+          MAX_RETRIES=${{ inputs.health-check-retries }}
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            READY=$(kubectl get deployment frontend -n ${{ inputs.namespace }} -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+            DESIRED=$(kubectl get deployment frontend -n ${{ inputs.namespace }} -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
+            
+            if [ "$READY" = "$DESIRED" ] && [ "$READY" -gt 0 ]; then
+              echo "✅ Frontend is healthy (Ready: ${READY}/${DESIRED})"
+              exit 0
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Attempt $RETRY_COUNT/$MAX_RETRIES: Frontend not ready (${READY}/${DESIRED})"
+            sleep ${{ inputs.health-check-interval }}
+          done
+          
+          echo "❌ Frontend health check failed"
+          exit 1
+        continue-on-error: true
+      
+      - name: Display health check results
+        run: |
+          echo "## 🏥 Health Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend | ${{ steps.backend.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | ${{ steps.frontend.outcome }} |" >> $GITHUB_STEP_SUMMARY
+
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [deploy, health-check]
+    if: always()
+    
+    steps:
+      - name: Send Slack notification
+        if: secrets.slack-webhook != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ needs.health-check.result }}
+          text: |
+            🚀 **Deployment Completed**
+            
+            • Environment: ${{ inputs.environment }}
+            • Namespace: ${{ inputs.namespace }}
+            • Backend Health: ${{ needs.health-check.outputs.backend }}
+            • Frontend Health: ${{ needs.health-check.outputs.frontend }}
+            • Deploy Time: ${{ needs.deploy.outputs.timestamp }}
+          webhook_url: ${{ secrets.slack-webhook }}
+          username: GitHub Actions
+          icon_emoji: ':rocket:'
+        continue-on-error: true
+      
+      - name: Send Discord notification
+        if: secrets.discord-webhook != ''
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.discord-webhook }}
+          status: ${{ needs.health-check.result }}
+          title: Deployment - ${{ inputs.environment }}
+          description: |
+            Environment: ${{ inputs.environment }}
+            Namespace: ${{ inputs.namespace }}
+            Backend: ${{ needs.health-check.outputs.backend }}
+            Frontend: ${{ needs.health-check.outputs.frontend }}
+          color: ${{ needs.health-check.result == 'success' && '0x00ff00' || '0xff0000' }}
+        continue-on-error: true
+      
+      - name: Generate deployment report
+        run: |
+          echo "# 📋 Deployment Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Cluster: ${{ inputs.cluster-name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Namespace: ${{ inputs.namespace }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## Images" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ inputs.backend-image }}" ]; then
+            echo "- Backend: \`${{ inputs.backend-image }}:${{ inputs.backend-tag }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -n "${{ inputs.frontend-image }}" ]; then
+            echo "- Frontend: \`${{ inputs.frontend-image }}:${{ inputs.frontend-tag }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## Health Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend: ${{ needs.health-check.outputs.backend }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend: ${{ needs.health-check.outputs.frontend }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.health-check.result }}" == "success" ]; then
+            echo "✅ Deployment completed successfully!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Deployment completed with issues!" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [deploy, health-check]
+    if: failure() && inputs.environment == 'production'
+    
+    steps:
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+      
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.kubeconfig }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+      
+      - name: Rollback backend
+        run: |
+          echo "Rolling back backend..."
+          kubectl rollout undo deployment/backend -n ${{ inputs.namespace }}
+          kubectl rollout status deployment/backend -n ${{ inputs.namespace }} --timeout=2m
+        continue-on-error: true
+      
+      - name: Rollback frontend
+        run: |
+          echo "Rolling back frontend..."
+          kubectl rollout undo deployment/frontend -n ${{ inputs.namespace }}
+          kubectl rollout status deployment/frontend -n ${{ inputs.namespace }} --timeout=2m
+        continue-on-error: true
+      
+      - name: Notify rollback
+        if: secrets.slack-webhook != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: warning
+          text: |
+            🔄 **Automatic Rollback**
+            
+            • Environment: ${{ inputs.environment }}
+            • Namespace: ${{ inputs.namespace }}
+            
+            Reason: Health checks failed after deployment
+          webhook_url: ${{ secrets.slack-webhook }}
+          username: GitHub Actions
+          icon_emoji: ':warning:'
+        continue-on-error: true

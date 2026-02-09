@@ -1,0 +1,84 @@
+{
+  "version": 2,
+  "name": "freelance-agents-marketplace",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "installCommand": "npm install",
+  
+  "regions": ["iad1"],
+  
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ],
+  
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://your-api.onrender.com/api/:match*"
+    }
+  ],
+  
+  "redirects": [
+    {
+      "source": "/home",
+      "destination": "/",
+      "statusCode": 301
+    },
+    {
+      "source": "/index.html",
+      "destination": "/",
+      "statusCode": 301
+    }
+  ],
+  
+  "crons": [],
+  
+  "env": {
+    "VITE_API_URL": "https://your-api.onrender.com",
+    "VITE_STRIPE_PUBLIC_KEY": "pk_test_your_stripe_public_key_here",
+    "NODE_ENV": "production"
+  },
+  
+  "build": {
+    "env": {
+      "VITE_API_URL": "https://your-api.onrender.com"
+    }
+  },
+  
+  "functions": {
+    "api/**": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
+}
