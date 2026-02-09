@@ -9,6 +9,9 @@ services:
     region: oregon
     plan: starter
     maxmemoryPolicy: allkeys-lru
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: Allow all
 
   - type: web
     name: freelance-agents-marketplace-api
