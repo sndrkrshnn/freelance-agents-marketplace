@@ -62,7 +62,10 @@ const paginate = (data, page = 1, limit = 10) => {
  * Generate a unique ID (fallback for UUID)
  */
 const generateId = () => {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  // Use Node's built‑in UUID generator for proper UUID strings
+  // crypto.randomUUID() is available in recent Node versions (v22+)
+  const { randomUUID } = require('crypto');
+  return randomUUID();
 };
 
 /**

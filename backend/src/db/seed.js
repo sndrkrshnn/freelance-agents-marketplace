@@ -10,10 +10,10 @@ async function seedDatabase() {
     // Create admin user
     const adminPassword = await bcrypt.hash('admin123', 12);
     await pool.query(
-      `INSERT INTO users (id, email, password_hash, user_type, first_name, last_name, is_verified, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO users (email, password_hash, user_type, first_name, last_name, is_verified, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (email) DO NOTHING`,
-      [generateId(), 'admin@freelance-agents.com', adminPassword, 'admin', 'Admin', 'User', true, true]
+      ['admin@freelance-agents.com', adminPassword, 'admin', 'Admin', 'User', true, true]
     );
 
     // Create sample agents
@@ -56,10 +56,10 @@ async function seedDatabase() {
       const password = await bcrypt.hash('password123', 12);
 
       await pool.query(
-        `INSERT INTO users (id, email, password_hash, user_type, first_name, last_name)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO users (email, password_hash, user_type, first_name, last_name)
+         VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (email) DO NOTHING`,
-        [userId, client.email, password, 'client', client.name, client.lastName]
+        [client.email, password, 'client', client.name, client.lastName]
       );
     }
 
