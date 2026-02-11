@@ -41,6 +41,25 @@ CREATE TABLE agent_profiles (
   UNIQUE(user_id)
 );
 
+-- Tasks/Projects
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  client_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  skills_required TEXT[] NOT NULL,
+  budget_min DECIMAL(10, 2),
+  budget_max DECIMAL(10, 2),
+  budget_type VARCHAR(20) CHECK (budget_type IN ('fixed', 'hourly')) NOT NULL,
+  estimated_hours INTEGER,
+  deadline TIMESTAMP WITH TIME ZONE,
+  status VARCHAR(20) CHECK (status IN ('open', 'in_progress', 'completed', 'cancelled', 'disputed')) DEFAULT 'open',
+  complexity VARCHAR(20) CHECK (complexity IN ('low', 'medium', 'high')) DEFAULT 'medium',
+  attachments TEXT[],
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Agent Ratings (Client to Agent)
 CREATE TABLE agent_ratings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -68,25 +87,6 @@ CREATE TABLE client_ratings (
   clarity_rating INTEGER CHECK (clarity_rating >= 1 AND rating <= 5),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(task_id)
-);
-
--- Tasks/Projects
-CREATE TABLE tasks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  client_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  title VARCHAR(255) NOT NULL,
-  description TEXT NOT NULL,
-  skills_required TEXT[] NOT NULL,
-  budget_min DECIMAL(10, 2),
-  budget_max DECIMAL(10, 2),
-  budget_type VARCHAR(20) CHECK (budget_type IN ('fixed', 'hourly')) NOT NULL,
-  estimated_hours INTEGER,
-  deadline TIMESTAMP WITH TIME ZONE,
-  status VARCHAR(20) CHECK (status IN ('open', 'in_progress', 'completed', 'cancelled', 'disputed')) DEFAULT 'open',
-  complexity VARCHAR(20) CHECK (complexity IN ('low', 'medium', 'high')) DEFAULT 'medium',
-  attachments TEXT[],
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Task Proposals/Bids

@@ -1,485 +1,795 @@
-# 🔧 Complete Setup Guide - API Keys & Deployment
-
-**Detailed steps to generate all necessary keys and deploy to Render**
-
----
-
-## 📋 Table of Contents
-
-1. [Generate JWT Secret](#1-generate-jwt-secret)
-2. [Get Stripe API Keys](#2-get-stripe-api-keys)
-3. [Generate VAPID Keys](#3-generate-vapid-keys)
-4. [Deploy Backend to Render](#4-deploy-backend-to-render)
-5. [Deploy Frontend to Vercel](#5-deploy-frontend-to-vercel)
+# 🚀 Complete Deployment Guide
+## Freelance Agents Marketplace - Backend (Render) + Frontend (Vercel)
 
 ---
 
-## 1. Generate JWT Secret
+## 📋 Prerequisites
 
-The JWT Secret is used to sign and verify authentication tokens. It should be a long, random string.
+Before you start, ensure you have:
 
-### Method 1: Using OpenSSL (Recommended)
-
-```bash
-# Generate a random 32-byte base64 encoded string
-openssl rand -base64 32
-```
-
-**Example output:**
-```
-xK9mP2vQ5wR8tY1uI4nL7jM3pS6vT9xF2wB5hG8jK1n=
-```
-
-**Copy this entire string!** You'll need it for `JWT_SECRET`.
-
-### Method 2: Using Node.js (Alternative)
-
-```bash
-# Create a Node.js script to generate the secret
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-```
-
-### Method 3: Quick Command (One-liner)
-
-```bash
-echo "JWT_SECRET=$(openssl rand -base64 32)"
-```
-
-**This is your `JWT_SECRET` - save it somewhere secure!**
+1. **GitHub Account** - Free
+2. **Render Account** - Free tier available
+3. **Vercel Account** - Free tier available
+4. **Git Installed** - For pushing to GitHub
+5. **Local Repository** - Your cleaned workspace repo
 
 ---
 
-## 2. Get Stripe API Keys
+## 🗂️ Architecture Overview
 
-Stripe is used for payment processing in the marketplace. You'll need test keys for development/production.
-
-### Step 1: Sign Up / Log In to Stripe
-
-1. Go to: **https://dashboard.stripe.com/login**
-2. Sign up (free) or log in
-3. Verify your email if it's a new account
-
-### Step 2: Get API Keys
-
-After logging in:
-
-1. Click **Developers** in the left sidebar (or go to https://dashboard.stripe.com/apikeys)
-2. You'll see **Test mode** keys (for development)
-3. Look for:
-   - **Publishable key** (starts with `pk_test_`)
-   - **Secret key** (starts with `sk_test_`)
-
-**Copy both keys!**
-
-Example:
 ```
-STRIPE_PUBLIC_KEY=pk_test_51M8sZkJxK9mP2vQ...
-STRIPE_SECRET_KEY=sk_test_51M8sZkJxK9mP2vQ...
+┌─────────────────────────────────────────────────────────────┐
+│                        Vercel                                │
+│                   Frontend (React)                          │
+│              https://[project].vercel.app                   │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ├─┐
+                      │ │ HTTPS API Calls
+                      ├─┘
+                      │
+┌─────────────────────────────────────────────────────────────┐
+│                        Render                                │
+│              ┌───────────────────────┐                     │
+│              │   PostgreSQL DB       │                     │
+│              │   (512MB, Free)       │                     │
+│              └───────────────────────┘                     │
+│              ┌───────────────────────┐                     │
+│              │      Redis            │                     │
+│              │   (25MB, Free)        │                     │
+│              └───────────────────────┘                     │
+│              ┌───────────────────────┐                     │
+│              │   Backend API         │                     │
+│              │  (Express + Docker)   │                     │
+│              │  [name].onrender.com  │                     │
+│              └───────────────────────┘                     │
+└─────────────────────────────────────────────────────────────┘
 ```
-
-### Step 3: For Production (Later)
-
-When you're ready to go live:
-1. Click **Test mode** toggle → Switch to **Live mode**
-2. You'll get different keys starting with `pk_live_` and `sk_live_`
-
-### Step 4: Get Webhook Secret (Optional - For Payment Notifications)
-
-1. In Stripe Dashboard → **Webhooks** → **Add endpoint**
-2. Webhook URL: `https://your-backend-url.onrender.com/api/payments/webhook`
-3. Events to listen to:
-   - `checkout.session.completed`
-   - `payment_intent.succeeded`
-   - `charge.succeeded`
-4. Click **Add endpoint**
-5. Copy the **Signing secret** (starts with `whsec_`)
-
-**Copy the webhook secret for `STRIPE_WEBHOOK_SECRET`**
 
 ---
 
-## 3. Generate VAPID Keys
+## 📦 PART 1: Prepare Your Repository
 
-VAPID keys are used for web push notifications. You'll need them to send notifications to users' browsers.
+### Step 1.1: Push Cleaned Code to GitHub
 
-### Step 1: Install web-push
-
-```bash
-# Navigate to backend directory
-cd ~/freelance-agents-marketplace/backend
-
-# Install web-push (if not already installed)
-npm install web-push --save-dev
-```
-
-### Step 2: Generate Keys
+Your local repository is already cleaned (commit: `815341b`). Push it:
 
 ```bash
-# Generate VAPID keys
-npx web-push generate-vapid-keys
+cd /home/sndrkrshnn/.openclaw/workspace/freelance-agents-marketplace
+
+# Verify clean git status
+git status
+
+# Add any new changes (if any)
+git add .
+git commit -m "chore: prepare for deployment"
+
+# Push to GitHub (You'll need your GitHub credentials)
+git push origin main
 ```
 
-**Example output:**
-```
-========================================
-Public Key:
-BCtKqLX7uT8vR2nG5hP9wK3mY6tQ1jV8pB4cH7xZ2fL9nM4sP6kR1tU8yV3wX7hQ2
-
-Private Key:
-qP9sB2uV5yX8mK1nL4tR7wZ3cH6jP9sV2tU5yX8mK1nL4tR7wZ3cH6jP9sV2tU5yX
-========================================
-```
-
-**Copy both keys:**
-- `VAPID_PUBLIC_KEY` = The public key above
-- `VAPID_PRIVATE_KEY` = The private key above
-- `VAPID_EMAIL` = Your email (e.g., `admin@yourdomain.com`)
+**Expected Status:**
+- Backend: Complete with full implementation
+- Frontend: Placeholder stage (minimal pages)
+- `render.yaml`: Present and configured
+- `frontend/vercel.json`: Present and configured
 
 ---
 
-## 4. Deploy Backend to Render
+## 🔧 PART 2: Backend Deployment (Render.com)
 
-Render provides free hosting for web apps, PostgreSQL, and Redis.
+### Step 2.1: Create Render Account
 
-### Step 1: Create Render Account
+1. Go to https://dashboard.render.com
+2. Sign up with GitHub
+3. Authorize Render to access your repositories
+4. Verify your email
 
-1. Go to: **https://dashboard.render.com/register**
-2. Sign up with:
-   - GitHub (recommended - easiest)
-   - Email + password
-   - Google
-3. Authorize Render to access your GitHub repositories
+**Free Tier Limits:**
+- PostgreSQL: 512MB storage
+- Redis: 25MB
+- Web Service: 512MB RAM, 750 CPU hours/month
+- SSL certificate: Auto-generated
+- Custom domain: Included
 
-### Step 2: Deploy Using Blueprint (Easiest - Auto Setup)
+---
 
-#### Method A: Import from GitHub (Auto-Detect render.yaml)
+### Step 2.2: Create PostgreSQL Database
 
-1. Go to: **https://dashboard.render.com/blueprints**
-2. Click **New Blueprint Instance**
-3. Select **freelance-agents-marketplace** repository
-4. Render will auto-detect `render.yaml` and show you:
-   - **Web Service** (Backend)
-   - **PostgreSQL** (Database)
-   - **Redis** (Cache)
-5. Click **Create Blueprint** (don't add env vars yet)
-6. Wait for services to be created (~1-2 minutes)
+1. **Navigate to Dashboard**
+   - Click **"+ New"** button
+   - Select **"PostgreSQL"**
+   
+2. **Configure Database**
+   ```
+   Name: freelance-agents-marketplace-db
+   Database: freelance_marketplace
+   User: freelance_user
+   Region: Oregon (or nearest to users)
+   Plan: Free (512MB)
+   ```
 
-#### After Services Are Created:
+3. **Click "Create Database"**
+   
+4. **Wait for Database to Create** (~2-3 minutes)
 
-You'll get 3 services with URLs like:
-- Backend: `https://freelance-agents-marketplace-backend-xxxx.onrender.com`
-- PostgreSQL: Internal connection string (Render provides)
-- Redis: Internal connection string (Render provides)
+5. **Save Connection Information**
+   ```
+   Internal Database URL (shown after creation):
+   postgresql://freelance_user:[password]@[host]:5432/freelance_marketplace
+   
+   NOTE: Don't need to copy this - render.yaml uses automatic linking
+   ```
 
-### Step 3: Add Environment Variables
+---
 
-#### For the **Web Service (Backend)**
+### Step 2.3: Create Redis Cache
 
-Click on your Web Service → **Settings** → **Environment Variables** → **Add**
+1. **Click "+ New"** → **"Redis"**
 
-Add these variables:
+2. **Configure Redis**
+   ```
+   Name: freelance-agents-marketplace-redis
+   Region: Oregon (same as database)
+   Plan: Free (25MB)
+   Maxmemory Policy: allkeys-lru
+   ```
+
+3. **Click "Create Redis"**
+
+4. **Wait for Redis to Create** (~1-2 minutes)
+
+---
+
+### Step 2.4: Create Backend Web Service
+
+1. **Click "+ New"** → **"Web Service"**
+
+2. **Connect Repository**
+   - Select repository: `freelance-agents-marketplace`
+   - Branch: `main`
+   - Runtime: **Docker**
+   
+3. **Configure Service**
+   ```
+   Name: freelance-agents-marketplace-api
+   Region: Oregon
+   Plan: Free
+   ```
+
+4. **Docker Settings**
+   ```
+   Dockerfile Path: ./backend/Dockerfile
+   Docker Context: ./backend
+   ```
+   
+5. **Environment Variables** (from `render.yaml`, will auto-apply):
+   
+   **Auto-generated by render.yaml:**
+   - `NODE_ENV`: production
+   - `PORT`: 5000
+   - `CORS_ORIGIN`: https://freelance-agents-marketplace.vercel.app
+   - `DATABASE_URL`: (linked to PostgreSQL)
+   - `REDIS_URL`: (linked to Redis)
+   - `JWT_SECRET`: Auto-generated
+   - `JWT_REFRESH_SECRET`: Auto-generated
+   
+   **You Need to Update:**
+   - `STRIPE_SECRET_KEY`: Get from Stripe Dashboard → Developers → API Keys
+     ``sk_test_your_stripe_secret_key_here``
+   
+6. **Advanced Settings**
+   - Health Check Path: `/health` (auto-set from render.yaml)
+   - Auto-Deploy: ON (detects from render.yaml)
+
+7. **Click "Create Web Service"**
+
+8. **Wait for Build & Deploy** (~5-7 minutes)
+   - Build logs will show progress
+   - Don't close the tab!
+
+9. **Save Your Backend URL**
+   ```
+   When deployment completes, you'll see:
+   https://freelance-agents-marketplace-api.onrender.com
+   ```
+
+---
+
+### Step 2.5: Run Database Migrations
+
+1. **Connect to Render Shell**
+   - Go to your service → "Connect" tab
+   - Copy the `render connect` command and run in terminal:
 
 ```bash
-# ===================================
-# ESSENTIAL - REQUIRED
-# ===================================
-
-NODE_ENV=production
-PORT=5000
-
-# JWT Secret (from Step 1)
-JWT_SECRET=your_generated_jwt_secret_here
-
-# ===================================
-# DATABASE (Render provides these automatically)
-# ===================================
-DATABASE_URL=postgresql://user:password@database-name.render.com/database-name
-
-# Redis (Render provides this automatically)
-REDIS_URL=redis://default:password@redis-name.render.com:6379
-
-# ===================================
-# STRIPE (from Step 2)
-# ===================================
-STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
-
-# Optional: Webhook (from Step 2, if you set it up)
-STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
-
-# ===================================
-# OPTIONAL - FEATURES
-# ===================================
-
-# Frontend URL (update this after you deploy frontend)
-FRONTEND_URL=https://your-frontend.vercel.app
-CORS_ORIGIN=https://your-frontend.vercel.app
-
-# OAuth - Google (Optional - skip if not using)
-# Get from: https://console.cloud.google.com/
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_CALLBACK_URL=https://your-backend-url.onrender.com/api/auth/google/callback
-
-# OAuth - GitHub (Optional - skip if not using)
-# Get from: https://github.com/settings/developers
-GITHUB_CLIENT_ID=your-github-client-id
-GITHUB_CLIENT_SECRET=your-github-client-secret
-GITHUB_CALLBACK_URL=https://your-backend-url.onrender.com/api/auth/github/callback
-
-# Push Notifications (from Step 3)
-VAPID_PUBLIC_KEY=your_vapid_public_key_from_step3
-VAPID_PRIVATE_KEY=your_vapid_private_key_from_step3
-VAPID_EMAIL=your-email@domain.com
+render connect freelance-agents-marketplace-api
 ```
 
-**Click "Save Changes" after adding variables**
+2. **Or Use Render Console**
+   - In Render Dashboard → Service → "Console"
+   - Click "Open Console"
 
-### Step 4: Trigger Deployment
-
-Go to your **Web Service** → **Manual Deploy** → **Clear build cache & deploy**
-
-Wait 2-3 minutes for the deployment to complete.
-
-### Step 5: Verify Backend is Running
-
-Once deployed, test the health endpoint:
-
+3. **Run Migrations**
 ```bash
-# Replace with your actual Render URL
-curl https://freelance-agents-marketplace-backend-xxxx.onrender.com/health
+cd /workspace/backend
+npm run migrations:run
 ```
 
-Expected response:
+4. **Verify Tables Created**
+```bash
+npx prisma db pull
+# Or check using psql
+psql $DATABASE_URL -c "\dt"
+```
+
+**Expected Tables:**
+- users
+- agent_profiles
+- tasks
+- proposals
+- payments
+- reviews
+- messages
+- notifications
+
+---
+
+### Step 2.6: Backend Health Check
+
+1. **Test Health Endpoint**
+```bash
+curl https://freelance-agents-marketplace-api.onrender.com/health
+```
+
+**Expected Response:**
 ```json
 {
-  "status": "ok",
-  "timestamp": "2026-02-09T...",
-  "port": 5000
+  "success": true,
+  "message": "API is running",
+  "timestamp": "2026-02-10T..."
 }
 ```
 
-**If you see this, your backend is live!** ✅
-
-### Step 6: Check Database Migrations
-
-Render will automatically run migrations if configured. Check the logs:
-1. Go to your Web Service → **Logs**
-2. Look for migration messages like "Running migrations..."
-3. If you see any database errors, check the DATABASE_URL
-
 ---
 
-## 5. Deploy Frontend to Vercel
+### Step 2.7: Update Frontend Configuration
 
-Vercel provides free hosting for frontend React apps with automatic SSL and CDN.
+Edit `frontend/vercel.json` to use your actual backend URL:
 
-### Step 1: Create Vercel Account
-
-1. Go to: **https://vercel.com/signup**
-2. Sign up with:
-   - GitHub (recommended - easiest)
-   - Email + password
-   - Google
-3. Authorize Vercel to access your GitHub repositories
-
-### Step 2: Import Project
-
-1. Go to: **https://vercel.com/new**
-2. Click **Import Project**
-3. Select **freelance-agents-marketplace** repository
-4. Configure:
-
-#### Project Settings:
-
-```
-Project Name: freelance-agents-marketplace-frontend
-Framework Preset: Vite
-Root Directory: ./frontend
-Build Command: npm run build
-Output Directory: dist
+```json
+{
+  "env": {
+    "VITE_API_URL": "https://freelance-agents-marketplace-api.onrender.com",
+    "VITE_STRIPE_PUBLIC_KEY": "pk_test_YOUR_PUBLIC_KEY"
+  }
+}
 ```
 
-5. Make sure **Root Directory** is set to `frontend` (not root)
-6. Click **Continue**
+**Also update the rewrites section:**
+```json
+"rewrites": [
+  {
+    "source": "/api/:match*",
+    "destination": "https://freelance-agents-marketplace-api.onrender.com/api/:match*"
+  }
+]
+```
 
-### Step 3: Add Environment Variables
-
-In the **Environment Variables** section, add:
-
+**Commit & Push:**
 ```bash
-# ===================================
-# REQUIRED
-# ===================================
-
-# Your backend URL from Step 4 (Render)
-VITE_API_URL=https://freelance-agents-marketplace-backend-xxxx.onrender.com
-
-# Stripe Public Key (from Step 2)
-VITE_STRIPE_PUBLIC_KEY=pk_test_your_stripe_public_key_here
-
-# ===================================
-# OPTIONAL
-# ===================================
-
-# Push Notification Public Key (from Step 3)
-VITE_VAPID_PUBLIC_KEY=your_vapid_public_key_here
-```
-
-**Click "Add" for each variable, then "Deploy"**
-
-### Step 4: Wait for Deployment
-
-Vercel will build and deploy your frontend (usually takes 30-60 seconds).
-
-### Step 5: Get Your Frontend URL
-
-After deploying successfully, you'll get a URL like:
-```
-https://freelance-marketplace-frontend.vercel.app
-```
-
-**Copy this URL!** You'll need to update the backend's `FRONTEND_URL` and `CORS_ORIGIN`.
-
-### Step 6: Update Backend Environment Variables
-
-Go back to Render → Backend Service → Environment Variables
-
-Update these with your Vercel URL:
-
-```bash
-FRONTEND_URL=https://freelance-marketplace-frontend.vercel.app
-CORS_ORIGIN=https://freelance-marketplace-frontend.vercel.app
-```
-
-**Save and redeploy the backend** (Manual Deploy → Clear build cache & deploy)
-
----
-
-## ✅ Verification Checklist
-
-### Backend (Render)
-- [ ] Health check returns 200 OK
-- [ ] Database migrations ran successfully
-- [ ] Redis connection working
-- [ ] Environment variables all set
-- [ ] No errors in logs
-
-### Frontend (Vercel)
-- [ ] Site loads successfully
-- [ ] Can access your Vercel URL
-- [ ] Can make API calls to backend
-- [ ] No console errors
-
-### Integration
-- [ ] Frontend can call backend API
-- [ ] CORS is working (no CORS errors in browser)
-- [ ] User can register/login
-- [ ] Can view agents
-- [ ] Can browse tasks
-
----
-
-## 🔧 Troubleshooting
-
-### Issue: Backend deployment fails
-
-**Check:**
-- Render logs for errors
-- DATABASE_URL is correct (Render provides this)
-- JWT_SECRET is set
-- All build dependencies are in package.json
-
-**Fix:**
-```bash
-# Check backend can run locally
-cd ~/freelance-agents-marketplace/backend
-npm install
-npm start
-# Then test with: curl http://localhost:5000/health
-```
-
-### Issue: Frontend can't connect to backend
-
-**Check:**
-- `VITE_API_URL` is correct
-- Backend is actually running (test health endpoint)
-- CORS origin in backend matches frontend URL
-
-**Fix:**
-- Update `VITE_API_URL` in Vercel
-- Update `CORS_ORIGIN` in Render
-- Redeploy both
-
-### Issue: Database connection errors
-
-**Check:**
-- DATABASE_URL is set correctly in Render
-- PostgreSQL service is running
-- Database name matches migrations
-
-**Fix:**
-- Go to PostgreSQL service in Render → Copy Internal Database URL
-- Paste into backend's DATABASE_URL
-
-### Issue: CORS errors in browser
-
-**Symptom:** Seeing CORS errors in browser console
-
-**Fix:**
-```bash
-# In Render backend environment:
-CORS_ORIGIN=https://your-frontend.vercel.app
-
-# Make sure there's no trailing slash!
-# Wrong: https://your-frontend.vercel.app/
-# Right: https://your-frontend.vercel.app
+git add frontend/vercel.json
+git commit -m "chore: update backend URL for deployment"
+git push origin main
 ```
 
 ---
 
-## 📝 Quick Summary Commands
+## 🎨 PART 3: Frontend Deployment (Vercel)
+
+### Step 3.1: Create Vercel Account
+
+1. Go to https://vercel.com/signup
+2. Sign up with GitHub
+3. Authorize Vercel to access your repositories
+
+**Free Tier Limits:**
+- Bandwidth: 100GB/month
+- Builds: 6000 hours/month
+- SSL certificate: Auto-generated
+- Edge Network: Global CDN
+- Custom domain: Included
+
+---
+
+### Step 3.2: Create Vercel Project
+
+1. **Click "Add New..."** → **"Project"**
+
+2. **Import Repository**
+   - Select: `freelance-agents-marketplace`
+   - Click "Import"
+
+3. **Configure Project**
+   ```
+   Project Name: freelance-agents-marketplace
+   Framework Preset: Vite
+   Root Directory: ./frontend
+   ```
+
+4. **Environment Variables**
+   Click "New Environment Variable":
+   
+   ```
+   Name: VITE_API_URL
+   Value: https://freelance-agents-marketplace-api.onrender.com
+   Environment: Production, Preview, Development
+   
+   Name: VITE_STRIPE_PUBLIC_KEY
+   Value: pk_test_your_stripe_public_key
+   Environment: Production, Preview, Development
+   ```
+
+5. **Build Settings** (auto-detected from package.json)
+   ```
+   Build Command: npm run build
+   Output Directory: dist
+   ```
+
+6. **Click "Deploy"**
+
+7. **Wait for Build & Deploy** (~2-3 minutes)
+
+8. **Save Your Frontend URL**
+   ```
+   When deployment completes, you'll see:
+   https://freelance-agents-marketplace.vercel.app
+   ```
+
+---
+
+### Step 3.3: Test Frontend
+
+1. **Open in Browser**
+   ```
+   https://freelance-agents-marketplace.vercel.app
+   ```
+
+2. **Expected to See**
+   - Homepage or placeholder UI
+   - Login/Register buttons
+   - Navigation menu
+
+3. **Open Browser Console**
+   - Right-click → Inspect → Console
+   - Check for API connection errors
+   - Should see no CORS errors
+
+---
+
+## ✅ PART 4: Post-Deployment Verification
+
+### Step 4.1: Complete Health Checklist
+
+Run these checks from your local terminal:
 
 ```bash
-# 1. Generate JWT Secret
-openssl rand -base64 32
+# 1. Backend Health
+curl https://freelance-agents-marketplace-api.onrender.com/health
 
-# 2. Generate VAPID Keys
-cd ~/freelance-agents-marketplace/backend
-npx web-push generate-vapid-keys
+# 2. Frontend Load
+curl -I https://freelance-agents-marketplace.vercel.app
 
-# 3. Test Backend (after Render deploy)
-curl https://your-backend.onrender.com/health
+# 3. Database Tables (via Render Console)
+curl GET /api/admin/stats
+```
 
-# 4. Test Backend Locally
+**Expected Results:**
+- ✅ Backend: HTTP 200 with JSON response
+- ✅ Frontend: HTTP 200 with HTML content
+- ✅ Database: Tables exist in PostgreSQL
+
+---
+
+### Step 4.2: Test User Registration
+
+1. **Open Frontend in Browser**
+2. **Click "Register"**
+3. **Fill Form:**
+   ```
+   Email: test@example.com
+   Password: Test@123
+   Role: Client (select one)
+   ```
+4. **Submit**
+
+5. **Expected Result**
+   - Redirects to Dashboard
+   - Shows user info
+   - Or shows error message if something wrong
+
+---
+
+### Step 4.3: Test API Directly
+
+```bash
+# Register API Call
+curl -X POST https://freelance-agents-marketplace-api.onrender.com/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "api-test@example.com",
+    "password": "Test@123",
+    "userType": "client",
+    "firstName": "API",
+    "lastName": "Test"
+  }'
+
+# Expected Response:
+# {
+#   "success": true,
+#   "data": {
+#     "user": {...},
+#     "token": "eyJhbGciOiJIUzI1NiIs..."
+#   }
+# }
+```
+
+---
+
+## 🔧 PART 5: Troubleshooting Guide
+
+### Common Issues & Solutions
+
+---
+
+#### Issue: Backend Deploy Fails - "Build Error"
+
+**Error Message:**
+```
+Error: Cannot find module 'express'
+```
+
+**Solution:**
+```bash
+# Make sure backend/package.json exists
 cd backend
+cat package.json | grep "dependencies"
+
+# If missing, reinstall locally and commit
 npm install
-npm start
-curl http://localhost:5000/health
+git add package.json package-lock.json
+git commit -m "chore: add dependencies"
+git push origin main
 ```
+
+---
+
+#### Issue: Frontend Deploy Fails - "Build Error"
+
+**Error Message:**
+```
+Error: VITE_API_URL is not defined
+```
+
+**Solution:**
+1. Go to Vercel → Project → Settings → Environment Variables
+2. Add `VITE_API_URL` with your backend URL
+3. Redeploy: Vercel → Deployments → Redeploy
+
+---
+
+#### Issue: CORS Error in Browser
+
+**Error Message:**
+```
+Access to fetch at 'https://...' has been blocked by CORS policy
+```
+
+**Solution:**
+1. Check backend `.env` → `CORS_ORIGIN`
+2. Ensure it matches your Vercel URL
+3. Update in Render → Service → Environment Variables
+4. Redeploy backend: Render → Services → Manual Deploy
+
+---
+
+#### Issue: Database Connection Failed
+
+**Error Message:**
+```
+Error: connect ECONNREFUSED
+```
+
+**Solution:**
+1. Verify PostgreSQL is running in Render
+2. Check `DATABASE_URL` in Render Environment Variables
+3. Should be auto-linked, but verify format:
+   ```
+   postgresql://freelance_user:[password]@[host]:5432/freelance_marketplace
+   ```
+4. Redeploy backend after changes
+
+---
+
+#### Issue: Migrations Not Running
+
+**Error Message:**
+```
+Error: relation "users" does not exist
+```
+
+**Solution:**
+```bash
+# Connect via Render Console and run:
+cd /workspace/backend
+npm run migrations:run
+```
+
+---
+
+### Issue: Stripe Webhook Errors
+
+**Error Message:**
+```
+Error: Invalid signature for Stripe webhook
+```
+
+**Solution:**
+1. Go to Stripe Dashboard → Developers → Webhooks
+2. Add endpoint: `https://[your-api].onrender.com/api/payments/webhook`
+3. Copy "Signing Secret"
+4. Add to Render: `STRIPE_WEBHOOK_SECRET`
+5. Test using Stripe CLI:
+```bash
+stripe trigger payment_intent.succeeded
+```
+
+---
+
+## 📊 PART 6: Monitoring & Logs
+
+### Backend Monitoring (Render)
+
+1. **View Logs**
+   - Go to Render → Service → Logs
+   - Filter: Production, Previous deployments
+   - Live logs available
+
+2. **View Metrics**
+   - CPU Usage, Memory, Disk
+   - Response Times, Uptime
+   - Free tier: Basic metrics
+
+---
+
+### Frontend Monitoring (Vercel)
+
+1. **View Logs**
+   - Go to Vercel → Project → Functions
+   - View function logs
+
+2. **View Analytics**
+   - Page views, visitors
+   - Geography, devices
+   - Available in Vercel Dashboard
+
+---
+
+## 🔐 PART 7: Security Checklist
+
+### ✅ Backend Security
+
+- [ ] JWT secret changed from default
+- [ ] JWT_EXPIRES_IN: 7d (or shorter for production)
+- [ ] Database password is strong
+- [ ] CORS_ORIGIN set to specific domain
+- [ ] Rate limiting enabled
+- [ ] HTTPS only
+- [ ] Helmet security headers
+- [ ] STRIPE_SECRET_KEY not exposed
+
+---
+
+### ✅ Frontend Security
+
+- [ ] VITE_API_URL points to backend
+- [ ] STRIPE_PUBLIC_KEY (test key only)
+- [ ] HTTPS only (Vercel auto)
+- [ ] CSP headers set
+- [ ] XSS protection headers
+- [ ] No sensitive data in frontend code
+
+---
+
+## 🌍 PART 8: Custom Domain Setup (Optional)
+
+### Step 8.1: Backend Domain (Render)
+
+1. **Go to Render → Service → Settings**
+2. **Scroll to "Domains"**
+3. **Click "Add Domain"**
+4. **Enter your domain:** `api.yourdomain.com`
+5. **DNS Settings Provided:**
+   ```
+   Type: CNAME
+   Name: api
+   Value: name provided by Render
+   ```
+6. **Update DNS at your domain provider**
+
+---
+
+### Step 8.2: Frontend Domain (Vercel)
+
+1. **Go to Vercel → Project → Settings → Domains**
+2. **Enter your domain:** `www.yourdomain.com`
+3. **Click "Add"**
+4. **DNS Settings Provided:**
+   ```
+   Type: A or CNAME
+   Values provided by Vercel
+   ```
+5. **Update DNS at your domain provider**
+6. **SSL Certificate auto-issued**
+
+---
+
+## 📱 PART 9: Mobile Optimization (Optional)
+
+The frontend is already responsive. To test:
+
+1. **Chrome DevTools:**
+   - Open website
+   - Press F12 → Toggle Device Toolbar (Ctrl+Shift+M)
+   - Test responsive modes
+
+2. **Real Device:**
+   - Deploy
+   - Open on phone
+   - Test touch interactions
+
+---
+
+## 💰 PART 10: Pricing Summary
+
+### Render (Backend) - FREE
+
+| Service | Free Tier | Upgrade |
+|---------|-----------|---------|
+| PostgreSQL | 512MB | $7/mo (1GB) |
+| Redis | 25MB | $5/mo (50MB) |
+| Web Service | 512MB RAM | $7/mo (1GB) |
+| **Total** | **$0/mo** | **$19/mo** |
+
+---
+
+### Vercel (Frontend) - FREE
+
+| Feature | Free Tier | Pro Tier |
+|---------|-----------|----------|
+| Bandwidth | 100GB/mo | 1TB/mo |
+| Builds | 6000 hrs/mo | Unlimited |
+| **Total** | **$0/mo** | **$20/mo** |
+
+---
+
+### Stripe - PAY AS YOU GO
+
+No monthly fees
+- Transaction fee: 2.9% + 30¢ per transaction
+- No setup cost
+
+---
+
+## 🎯 PART 11: Next Steps After Deployment
+
+### Immediate (Day 1)
+1. ✅ Verify everything works end-to-end
+2. ✅ Test user registration & login
+3. ✅ Test task creation
+4. ✅ Test proposal submission
+5. ✅ Test escrow payment flow
+6. ✅ Test review submission
+
+### Week 1
+1. Set up monitoring alerts
+2. Set up error tracking (Sentry, etc.)
+3. Test load with multiple users
+4. Optimize slow queries
+
+### Week 2-4
+1. Build additional frontend pages
+2. Add analytics (Google Analytics)
+3. Set up email notifications
+4. Improve admin dashboard
+
+### Month 2+
+1. Consider upgrading tiers if needed
+2. Add more features (chat, advanced search)
+3. Marketing and user acquisition
+4. Gather user feedback
+
+---
+
+## 📞 PART 12: Support Resources
+
+### Official Documentation
+- **Render Docs:** https://render.com/docs
+- **Vercel Docs:** https://vercel.com/docs
+- **Stripe Docs:** https://stripe.com/docs
+
+### Your Project Files
+- `render.yaml` - Backend configuration
+- `frontend/vercel.json` - Frontend configuration
+- `.env.example` - Environment variable template
+
+### Quick Reference Commands
+
+```bash
+# Push updates
+git add .
+git commit -m "chore: update"
+git push origin main
+
+# Re-deploy backend (automatic on push)
+# Re-deploy frontend (automatic on push)
+
+# Check backend logs
+# Go to Render Dashboard → Service → Logs
+
+# Check frontend logs
+# Go to Vercel Dashboard → Project → Functions
+```
+
+---
+
+## ✅ Deployment Checklist
+
+Use this to track your progress:
+
+**Backend (Render):**
+- [ ] Repository pushed to GitHub
+- [ ] PostgreSQL database created
+- [ ] Redis cache created
+- [ ] Backend service created and deployed
+- [ ] Database migrations run
+- [ ] Health check passes
+- [ ] Environment variables configured (STRIPE_SECRET_KEY)
+- [ ] CORS origin set correctly
+
+**Frontend (Vercel):**
+- [ ] Project created from GitHub
+- [ ] Root directory set to `frontend`
+- [ ] VITE_API_URL set
+- [ ] VITE_STRIPE_PUBLIC_KEY set
+- [ ] Build successful
+- [ ] Frontend loads in browser
+- [ ] No CORS errors
+
+**Final Verification:**
+- [ ] Can register new user
+- [ ] Can login
+- [ ] Can create task
+- [ ] Can submit proposal
+- [ ] API responses work
+- [ ] Pages load correctly
 
 ---
 
 ## 🎉 You're Done!
 
-Once completed:
-1. **Frontend**: https://your-frontend.vercel.app
-2. **Backend**: https://your-backend.onrender.com
-3. **Database**: Running on Render PostgreSQL
-4. **Redis**: Running on Render Redis
+Congratulations! Your Freelance Agents Marketplace is now deployed and live!
 
-**Everything is live and free!** 🚀
+**Your URLs:**
+- Frontend: https://freelance-agents-marketplace.vercel.app
+- Backend: https://freelance-agents-marketplace-api.onrender.com
 
 ---
 
-## 🚀 Next Steps
+**Need Help?**
+- Check Render Logs for backend errors
+- Check Vercel Logs for frontend errors
+- Review this guide
+- Open an issue on GitHub
 
-1. **Deploy Blueprint**: Go to Render dashboard → New Blueprint
-2. **Add Env Vars**: Use keys generated above
-3. **Deploy Frontend**: Import to Vercel with proper config
-4. **Test**: Open frontend URL and test registration
-
----
-
-**Need help? Check the logs in both Render and Vercel dashboards!**
-
-Good luck with deployment! 🎊
+Happy Deploying! 🚀
