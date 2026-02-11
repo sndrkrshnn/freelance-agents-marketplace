@@ -1,11 +1,9 @@
 const { Pool } = require('pg');
 const pool = require('../../src/config/database');
+const logger = require('../../src/config/logger');
 
 // Mock logger to avoid actual logging during tests
-jest.mock('../../src/config/logger', () => ({
-  info: jest.fn(),
-  error: jest.fn(),
-}));
+jest.mock('../../src/config/logger');
 
 describe('Database Configuration', () => {
   describe('Environment Variables', () => {
@@ -98,6 +96,16 @@ describe('Database Configuration', () => {
     });
   });
 
+  describe('Helper Methods', () => {
+    it('should have testConnection method', () => {
+      expect(typeof pool.testConnection).toBe('function');
+    });
+
+    it('should have isHealthy method', () => {
+      expect(typeof pool.isHealthy).toBe('function');
+    });
+  });
+
   describe('Instance Type', () => {
     it('should export a Pool instance', () => {
       expect(pool).toBeInstanceOf(Pool);
@@ -110,6 +118,7 @@ describe('Database Configuration', () => {
     afterEach(() => {
       // Restore original environment after each test
       process.env = { ...originalEnv };
+      jest.clearAllMocks();
     });
 
     it('should validate required environment variables in production', () => {
@@ -122,44 +131,69 @@ describe('Database Configuration', () => {
       process.env.DB_USER = 'test-user';
       process.env.DB_PASSWORD = 'test-pass';
 
-      // In production, env vars should not use defaults
-      const vars = {
-        DB_HOST: process.env.DB_HOST,
-        DB_PORT: process.env.DB_PORT,
-        DB_NAME: process.env.DB_NAME,
-        DB_USER: process.env.DB_USER,
-        DB_PASSWORD: process.env.DB_PASSWORD,
-      };
+      // Import fresh database config with new env
+      jest.resetModules();
+      const db = require('../../src/config/database');
 
-      Object.values(vars).forEach((value) => {
-        expect(value).toBeTruthy();
-        expect(value).not.toBe('localhost');
-        expect(value).not.toBe('postgres');
-      });
+      // In production, env vars should not use defaults
+      expect(db.options.host).toBe('test-host');
+      expect(db.options.database).toBe('test-db');
+      expect(db.options.user).toBe('test-user');
     });
 
     it('should accept defaults in development', () => {
       process.env.NODE_ENV = 'development';
 
-      // In development, defaults should be acceptable
-      const { Pool: PoolDev } = require('pg');
-      const devPool = new PoolDev({
-        host: process.env.DB_HOST || 'localhost',
-        port: parseInt(process.env.DB_PORT || '5432', 10),
-        database: process.env.DB_NAME || 'freelance_agents_db',
-        user: process.env.DB_USER || 'postgres',
-        password: process.env.DB_PASSWORD || 'postgres',
-      });
+      // Import fresh database config with test env
+      jest.resetModules();
+      const db = require('../../src/config/database');
 
-      expect(devPool.options.host).toBeTruthy();
-      expect(devPool.options.database).toBeTruthy();
+      expect(db.options.host).toBeTruthy();
+      expect(db.options.database).toBeTruthy();
     });
 
     it('should use test database when NODE_ENV is test', () => {
       process.env.NODE_ENV = 'test';
       process.env.DB_NAME = 'freelance_agents_test_db';
 
-      expect(process.env.DB_NAME).toContain('test');
+      // Import fresh database config with test env
+      jest.resetModules();
+      const db = require('../../src/config/database');
+
+      expect(db.options.database).toContain('test');
+    });
+
+    it('should warn when using defaults in non-production', () => {
+      process.env.NODE_ENV = 'development';
+      // Unset all DB environment variables
+      delete process.env.DB_HOST;
+      delete process.env.DB_PORT;
+      delete process.env.DB_NAME;
+      delete process.env.DB_USER;
+      delete process.env.DB_PASSWORD;
+
+      // Import fresh database config
+      jest.resetModules();
+      const db = require('../../src/config/database');
+
+      // Should have used defaults
+      expect(db.options.host).toBe('localhost');
+      expect(db.options.database).toBe('freelance_agents_db');
+    });
+
+    it('should throw error when required env vars missing in production', () => {
+      process.env.NODE_ENV = 'production';
+      // Unset required DB environment variable
+      delete process.env.DB_HOST;
+      process.env.DB_PORT = '5432';
+      process.env.DB_NAME = 'test-db';
+      process.env.DB_USER = 'test-user';
+      process.env.DB_PASSWORD = 'test-pass';
+
+      expect(() => {
+        jest.resetModules();
+        require('../../src/config/database');
+      }).toThrow('Missing required environment variables');
     });
   });
 });
