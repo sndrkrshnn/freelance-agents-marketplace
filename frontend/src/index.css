@@ -2,389 +2,631 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 
+ * ANTI-SLOP DESIGN: Neo-Brutalist Marketplace
+ * ------------------------------------------------
+ * Design Philosophy: Raw, Bold, Asymmetric, Memorable
+ * 
+ * NO Inter/Roboto fonts | NO purple gradients | NO rounded everything
+ * ------------------------------------------------
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
 :root {
-  --primary-color: #6366f1;
-  --primary-dark: #4f46e5;
-  --primary-light: #818cf8;
+  /* Neo-Brutalist Color Palette */
+  --color-black: #0a0a0a;
+  --color-white: #fafafa;
+  --color-acid-green: #ccff00;
+  --color-burnt-orange: #ff4500;
+  --color-electric-blue: #00d4ff;
+  --color-hot-pink: #ff006e;
+  --color-yellow: #ffda00;
+  --color-gray-100: #f4f4f4;
+  --color-gray-200: #e5e5e5;
+  --color-gray-800: #2d2d2d;
+  
+  /* Typography */
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'Space Mono', monospace;
+  
+  /* Borders & Shadows - Sharp, intentional */
+  --border-thick: 3px solid var(--color-black);
+  --border-thin: 1px solid var(--color-black);
+  --shadow-hard: 4px 4px 0px 0px var(--color-black);
+  --shadow-hard-lg: 8px 8px 0px 0px var(--color-black);
+  
+  /* Spacing - Generous */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 2rem;
+  --space-lg: 4rem;
+  --space-xl: 6rem;
 }
 
+/* ============================================
+   BASE STYLES
+============================================ */
+
 @layer base {
+  * {
+    border-color: var(--color-black);
+  }
+  
   body {
-    @apply antialiased;
+    font-family: var(--font-display);
+    background-color: var(--color-white);
+    color: var(--color-black);
     font-feature-settings: "rlig" 1, "calt" 1;
+    line-height: 1.6;
+    overflow-x: hidden;
   }
-
-  /* Prevent text selection on touch for better mobile experience */
-  .no-select {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+  
+  /* Selection styling */
+  ::selection {
+    background-color: var(--color-acid-green);
+    color: var(--color-black);
   }
-
+  
   /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
   }
-
-  /* Improve tap target sizes on mobile */
-  button,
-  a,
-  input,
-  select,
-  textarea {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: rgba(99, 102, 241, 0.1);
+  
+  /* Headings */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
   }
-
-  /* Hide scrollbar but allow scrolling (for cleaner mobile UI) */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  
+  h1 {
+    font-size: clamp(2.5rem, 8vw, 5rem);
+    text-transform: uppercase;
   }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+  
+  h2 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
   }
-
-  /* Custom scrollbar */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  
+  h3 {
+    font-size: clamp(1.5rem, 3vw, 2rem);
   }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-gray-100;
+  
+  /* Monospace for code, data, numbers */
+  .font-mono {
+    font-family: var(--font-mono);
+    letter-spacing: -0.03em;
   }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full;
+  
+  /* Focus visible for keyboard navigation */
+  :focus-visible {
+    outline: 3px solid var(--color-acid-green);
+    outline-offset: 2px;
   }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400;
+  
+  :focus:not(:focus-visible) {
+    outline: none;
   }
 }
 
-@layer components {
-  /* Minimum touch target size (48x48px) */
-  .touch-target {
-    @apply min-h-[48px] min-w-[48px] flex items-center justify-center;
-  }
+/* ============================================
+   ANIMATIONS
+============================================ */
 
-  /* Safe area insets for notched devices */
-  .safe-area-top {
-    padding-top: max(env(safe-area-inset-top), 1rem);
+/* Staggered reveal - key anti-slop motion */
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
   }
-  .safe-area-bottom {
-    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  .safe-area-left {
-    padding-left: max(env(safe-area-inset-left), 1rem);
-  }
-  .safe-area-right {
-    padding-right: max(env(safe-area-inset-right), 1rem);
-  }
+}
 
-  /* Card hover effects */
-  .card-hover {
-    @apply transition-all duration-200 ease-in-out;
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-60px);
   }
-  .card-hover:hover {
-    @apply shadow-lg transform scale-[1.02];
-  }
-
-  /* Button press effects for touch */
-  .button-press {
-    @apply active:scale-95 active:bg-opacity-80 transition-transform duration-100;
-  }
-
-  /* Loading shimmer animation */
-  .shimmer {
-    background: linear-gradient(
-      90deg,
-      #f0f0f0 0%,
-      #e0e0e0 50%,
-      #f0f0f0 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-  }
-  @keyframes shimmer {
-    0% {
-      background-position: -200% 0;
-    }
-    100% {
-      background-position: 200% 0;
-    }
-  }
-
-  /* Fade in animation */
-  .fade-in {
-    animation: fadeIn 0.3s ease-in;
-  }
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Slide up animation */
-  .slide-up {
-    animation: slideUp 0.3s ease-out;
-  }
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(100%);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Mobile navigation drawer */
-  .mobile-drawer {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 80%;
-    max-width: 300px;
-    height: 100%;
-    background: white;
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease-in-out;
-    z-index: 50;
-  }
-  .mobile-drawer.closed {
-    transform: translateX(-100%);
-  }
-  .mobile-drawer.open {
+  to {
+    opacity: 1;
     transform: translateX(0);
   }
+}
 
-  /* Backdrop overlay */
-  .backdrop {
-    position: fixed;
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes glitch {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+}
+
+/* ============================================
+   UTILITY CLASSES
+============================================ */
+
+@layer utilities {
+  /* Staggered reveal delays */
+  .animate-reveal-1 { animation: reveal-up 0.6s ease-out 0.1s backwards; }
+  .animate-reveal-2 { animation: reveal-up 0.6s ease-out 0.2s backwards; }
+  .animate-reveal-3 { animation: reveal-up 0.6s ease-out 0.3s backwards; }
+  .animate-reveal-4 { animation: reveal-up 0.6s ease-out 0.4s backwards; }
+  .animate-reveal-5 { animation: reveal-up 0.6s ease-out 0.5s backwards; }
+  
+  .animate-slide-left { animation: slide-in-left 0.6s ease-out backwards; }
+  .animate-slide-right { animation: slide-in-right 0.6s ease-out backwards; }
+  
+  /* Marquee for scrolling text */
+  .marquee {
+    display: flex;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .marquee-content {
+    display: flex;
+    animation: marquee 20s linear infinite;
+  }
+  
+  /* Glitch effect on hover */
+  .glitch-hover:hover {
+    animation: glitch 0.3s ease-in-out;
+  }
+  
+  /* Noise texture overlay */
+  .noise-bg {
+    position: relative;
+    background-color: var(--color-white);
+  }
+  .noise-bg::before {
+    content: '';
+    position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 40;
-    transition: opacity 0.3s ease-in-out;
-  }
-  .backdrop.hidden {
-    opacity: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.03;
     pointer-events: none;
   }
-  .backdrop.visible {
-    opacity: 1;
+  
+  /* Diagonal stripe pattern */
+  .diagonal-stripes {
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      var(--color-gray-200) 10px,
+      var(--color-gray-200) 20px
+    );
+  }
+  
+  /* Grid pattern */
+  .grid-pattern {
+    background-image: 
+      linear-gradient(var(--border-thin) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border-thin) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  
+  /* Remove tap highlight */
+  .no-tap-highlight {
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
-@layer utilities {
-  /* Text truncation */
-  .line-clamp-1 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
-  }
-  .line-clamp-2 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-  .line-clamp-3 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-  }
-
-  /* Responsive text sizes */
-  .text-responsive-xs {
-    @apply text-xs sm:text-sm;
-  }
-  .text-responsive-sm {
-    @apply text-sm sm:text-base;
-  }
-  .text-responsive-base {
-    @apply text-base sm:text-lg;
-  }
-  .text-responsive-lg {
-    @apply text-lg sm:text-xl;
-  }
-  .text-responsive-xl {
-    @apply text-xl sm:text-2xl;
-  }
-  .text-responsive-2xl {
-    @apply text-2xl sm:text-3xl;
-  }
-
-  /* Full viewport height */
-  .h-screen-full {
-    height: 100%;
-    height: 100dvh; /* Dynamic viewport height for mobile */
-  }
-
-  /* Optimize images for high density displays */
-  .img-responsive {
-    image-rendering: -webkit-optimize-contrast;
-  }
-}
-
-/* PWA-specific styles */
-body.pwa-standalone {
-  /* Adjust padding for standalone mode */
-  .safe-area-inset-top {
-    padding-top: env(safe-area-inset-top);
-  }
-}
-
-/* Offline indicator */
-body.offline::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: #f59e0b;
-  z-index: 9999;
-  animation: offlineIndicator 2s ease-in-out infinite;
-}
-
-@keyframes offlineIndicator {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-/* Focus visible for keyboard navigation */
-:focus-visible {
-  @apply outline-none ring-2 ring-indigo-500 ring-offset-2;
-}
-
-/* Disable focus outline on mouse, keep it for keyboard */
-:focus:not(:focus-visible) {
-  @apply outline-none;
-}
-
-/* Print styles */
-@media print {
-  .no-print {
-    display: none !important;
-  }
-}
-
-/* Reduce motion for accessibility */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-  }
-
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-    font-family: 'Inter', system-ui, sans-serif;
-  }
-}
+/* ============================================
+   COMPONENT STYLES
+============================================ */
 
 @layer components {
+  /* =========================================
+     BUTTONS - Neo-Brutalist Style
+  ========================================= */
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1.75rem;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-black);
+    background-color: var(--color-white);
+    border: var(--border-thick);
+    box-shadow: var(--shadow-hard);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    pointer-events: auto;
   }
-
+  
+  .btn:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0px 0px var(--color-black);
+  }
+  
+  .btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 0px 0px 0px 0px var(--color-black);
+  }
+  
   .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+    background-color: var(--color-acid-green);
   }
-
+  
   .btn-secondary {
-    @apply btn bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-500;
+    background-color: var(--color-electric-blue);
   }
-
+  
+  .btn-accent {
+    background-color: var(--color-burnt-orange);
+    color: white;
+  }
+  
+  .btn-pink {
+    background-color: var(--color-hot-pink);
+    color: white;
+  }
+  
+  .btn-yellow {
+    background-color: var(--color-yellow);
+  }
+  
+  .btn-dark {
+    background-color: var(--color-black);
+    color: white;
+  }
+  
   .btn-outline {
-    @apply btn border-2 border-primary-600 text-primary-600 hover:bg-primary-50 focus:ring-primary-500;
+    background-color: transparent;
   }
-
-  .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  
+  .btn-large {
+    padding: 1.25rem 2.5rem;
+    font-size: 1.125rem;
   }
-
+  
+  .btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+  
+  /* =========================================
+     CARDS - Sharp, Intentional
+  ========================================= */
   .card {
-    @apply bg-white rounded-lg shadow-md border border-gray-200 p-6;
+    background-color: var(--color-white);
+    border: var(--border-thick);
+    box-shadow: var(--shadow-hard);
+    padding: 2rem;
+    position: relative;
+    transition: all 0.2s ease;
   }
-
+  
+  .card:hover {
+    transform: translate(-4px, -4px);
+    box-shadow: 8px 8px 0px 0px var(--color-black);
+  }
+  
+  .card-accent {
+    background-color: var(--color-acid-green);
+  }
+  
+  .card-blue {
+    background-color: var(--color-electric-blue);
+  }
+  
+  .card-pink {
+    background-color: var(--color-hot-pink);
+    color: white;
+  }
+  
+  .card-dark {
+    background-color: var(--color-black);
+    color: white;
+  }
+  
+  /* =========================================
+     INPUTS - Bold Styling
+  ========================================= */
   .input {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    width: 100%;
+    padding: 0.875rem 1rem;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--color-black);
+    background-color: var(--color-white);
+    border: var(--border-thick);
+    box-shadow: var(--shadow-hard);
+    transition: all 0.15s ease;
+    outline: none;
   }
-
-  .label {
-    @apply block text-sm font-medium text-gray-700 mb-2;
+  
+  .input:hover {
+    background-color: var(--color-gray-100);
   }
-
-  .badge {
-    @apply px-2 py-1 rounded-full text-xs font-medium;
+  
+  .input:focus {
+    background-color: var(--color-acid-green);
+    box-shadow: 6px 6px 0px 0px var(--color-black);
   }
-
-  .badge-success {
-    @apply badge bg-green-100 text-green-800;
+  
+  .input::placeholder {
+    color: var(--color-gray-800);
   }
-
-  .badge-warning {
-    @apply badge bg-yellow-100 text-yellow-800;
+  
+  /* =========================================
+     TAGS/BADGES - No Rounded Corners
+  ========================================= */
+  .tag {
+    display: inline-block;
+    padding: 0.375rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 2px solid var(--color-black);
+    background-color: var(--color-white);
   }
-
-  .badge-error {
-    @apply badge bg-red-100 text-red-800;
+  
+  .tag-green { background-color: var(--color-acid-green); }
+  .tag-blue { background-color: var(--color-electric-blue); }
+  .tag-pink { background-color: var(--color-hot-pink); color: white; }
+  .tag-orange { background-color: var(--color-burnt-orange); color: white; }
+  .tag-yellow { background-color: var(--color-yellow); }
+  .tag-dark { background-color: var(--color-black); color: white; }
+  
+  /* =========================================
+     SECTIONS - Asymmetric Layouts
+  ========================================= */
+  .section {
+    padding: var(--space-xl) var(--space-md);
+    position: relative;
   }
-
-  .badge-info {
-    @apply badge bg-blue-100 text-blue-800;
+  
+  .section-diagonal {
+    position: relative;
+    padding: var(--space-xl) var(--space-md);
+    clip-path: polygon(0 0, 100% 0, 100% 90%, 0 100%);
   }
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-gray-100;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-gray-400 rounded;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-500;
+  
+  .section-stripes {
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--color-white),
+      var(--color-white) 30px,
+      var(--color-gray-100) 30px,
+      var(--color-gray-100) 60px
+    );
+  }
+  
+  /* =========================================
+     MARQUEE BANNER
+  ========================================= */
+  .marquee-banner {
+    background-color: var(--color-black);
+    color: var(--color-white);
+    padding: 1rem 0;
+    border-top: var(--border-thick);
+    border-bottom: var(--border-thick);
+    overflow: hidden;
+  }
+  
+  .marquee-banner-text {
+    display: flex;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    white-space: nowrap;
+    animation: marquee 30s linear infinite;
+  }
+  
+  .marquee-banner span {
+    padding: 0 2rem;
+  }
+  
+  /* =========================================
+     HEADLINE WITH DECORATION
+  ========================================= */
+  .headline-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .headline-underline {
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background-color: var(--color-acid-green);
+    z-index: -1;
+  }
+  
+  .headline-strike {
+    text-decoration: line-through;
+    text-decoration-color: var(--color-hot-pink);
+    text-decoration-thickness: 4px;
+  }
+  
+  /* =========================================
+     STAT BOX
+  ========================================= */
+  .stat-box {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.5rem;
+    background-color: var(--color-black);
+    color: white;
+    border: none;
+  }
+  
+  .stat-value {
+    font-family: var(--font-mono);
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  
+  .stat-label {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 0.5rem;
+    opacity: 0.8;
+  }
+  
+  /* =========================================
+     SCROLLBAR - Custom Styling
+  ========================================= */
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--color-gray-100);
+    border: var(--border-thin);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-black);
+    border: 2px solid var(--color-gray-100);
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-acid-green);
+  }
+  
+  /* =========================================
+     MOBILE-SPECIFIC
+  ========================================= */
+  @media (max-width: 768px) {
+    .section {
+      padding: var(--space-md) var(--space-sm);
+    }
+    
+    .mobile-drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 85%;
+      max-width: 320px;
+      height: 100%;
+      background-color: var(--color-white);
+      border-right: var(--border-thick);
+      z-index: 100;
+      transition: transform 0.3s ease;
+    }
+    
+    .mobile-drawer.closed {
+      transform: translateX(-100%);
+    }
+    
+    .mobile-drawer.open {
+      transform: translateX(0);
+    }
+    
+    .backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 50;
+    }
+  }
+  
+  /* =========================================
+     ACCESSIBILITY
+  ========================================= */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+    
+    .marquee-banner-text {
+      animation: none;
+    }
+  }
+  
+  /* =========================================
+     PRINT STYLES
+  ========================================= */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    
+    body {
+      background-color: white !important;
+      color: black !important;
+    }
+  }
+  
+  /* =========================================
+     PWA SPECIFIC
+  ========================================= */
+  body.pwa-standalone {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  /* =========================================
+     LOADING STATES
+  ========================================= */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-gray-200) 0%,
+      var(--color-gray-100) 50%,
+      var(--color-gray-200) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  
+  /* =========================================
+     FOCUS RINGS - Sharp Corners
+  ========================================= */
+  .focus-ring {
+    outline: 3px solid var(--color-acid-green);
+    outline-offset: 2px;
+  }
 }
