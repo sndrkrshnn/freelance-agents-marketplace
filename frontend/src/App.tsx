@@ -52,27 +52,6 @@ function Navigation() {
   )
 }
 
-// Placeholder pages
-function TaskDetailPage() {
-  return (
-    <div className="min-h-screen bg-white pt-24">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-4xl font-bold mb-4">Task Details - Coming Soon</h1>
-      </div>
-    </div>
-  )
-}
-
-function AgentDetailPage() {
-  return (
-    <div className="min-h-screen bg-white pt-24">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-4xl font-bold mb-4">Agent Details - Coming Soon</h1>
-      </div>
-    </div>
-  )
-}
-
 // Main App Component
 function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine)
