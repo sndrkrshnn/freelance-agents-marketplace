@@ -11,6 +11,7 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 const logger = require('./config/logger');
 const routes = require('./routes');
 const swaggerSpec = require('./config/swagger');
+const schedulerService = require('./services/schedulerService');
 
 const app = express();
 
@@ -179,6 +180,13 @@ const server = app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
   logger.info(`API Documentation available at http://localhost:${PORT}/api-docs`);
   logger.info(`Health check at http://localhost:${PORT}/health`);
+
+  // Start scheduler service
+  try {
+    schedulerService.start();
+  } catch (error) {
+    logger.error('Failed to start scheduler:', error);
+  }
 });
 
 module.exports = app;

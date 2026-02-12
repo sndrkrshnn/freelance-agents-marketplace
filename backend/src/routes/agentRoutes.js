@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const agentController = require('../controllers/agentController');
+const agentStatsController = require('../controllers/agentStatsController');
 const { authenticate, authorize } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const { agentProfileSchema, listAgentsSchema } = require('../validators/userValidators');
@@ -9,6 +10,7 @@ const { agentProfileSchema, listAgentsSchema } = require('../validators/userVali
 router.get('/', validate(listAgentsSchema), agentController.listAgents);
 router.get('/top', agentController.getTopAgents);
 router.get('/search', agentController.searchAgents);
+router.get('/stats', agentStatsController.getAgentStats);
 router.get('/:userId/profile', agentController.getProfile);
 
 // All routes require authentication

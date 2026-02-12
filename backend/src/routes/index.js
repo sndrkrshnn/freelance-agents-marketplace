@@ -18,6 +18,7 @@ const agentRoutes = require('./agentRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const messageRoutes = require('./messageRoutes');
 const adminRoutes = require('./adminRoutes');
+const agentExecutionRoutes = require('./agentExecutionRoutes');
 
 router.use('/auth', authRoutes);
 router.use('/tasks', taskRoutes);
@@ -28,5 +29,6 @@ router.use('/agents', agentRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/messages', messageRoutes);
 router.use('/admin', adminRoutes);
+router.use('/agent-execution', agentExecutionRoutes);
 
 module.exports = router;

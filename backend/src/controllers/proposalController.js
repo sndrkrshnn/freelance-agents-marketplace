@@ -1,6 +1,7 @@
 const Proposal = require('../models/Proposal');
 const Task = require('../models/Task');
 const Notification = require('../models/Notification');
+const agentAutoStartService = require('../services/agentAutoStartService');
 const { AppError } = require('../middleware/errorHandler');
 const logger = require('../config/logger');
 
@@ -143,6 +144,11 @@ exports.acceptProposal = async (req, res) => {
     }
 
     logger.info(`Proposal accepted: ${id} by client ${clientId}`);
+
+    // Auto-start agent execution
+    agentAutoStartService.handleProposalAccepted(id).catch(err => {
+      logger.error('Auto-start agent execution failed:', err);
+    });
 
     res.json({
       success: true,
