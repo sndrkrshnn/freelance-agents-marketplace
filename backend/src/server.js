@@ -174,7 +174,7 @@ process.on('SIGTERM', async () => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 const server = app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
   logger.info(`API Documentation available at http://localhost:${PORT}/api-docs`);
