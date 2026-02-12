@@ -1,39 +1,8 @@
 const rateLimit = require('express-rate-limit');
-// Support both CommonJS and ESM imports for rate-limit-redis
-const RedisStore = require('rate-limit-redis').RedisStore || require('rate-limit-redis').default || (() => {
-  try {
-    return require('rate-limit-redis/dist/RedisStore').default;
-  } catch {
-    return null;
-  }
-})();
 const logger = require('../config/logger');
 
-// Try to initialize Redis store if Redis is available
-let redisClient;
-try {
-  const redis = require('redis');
-  redisClient = redis.createClient({
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
-  });
-  redisClient.connect().catch(() => {
-    logger.warn('Redis connection failed, falling back to memory rate limiting');
-    redisClient = null;
-  });
-} catch (error) {
-  logger.warn('Redis not available, falling back to memory rate limiting');
-}
-
-// Create store options
-const getStoreOptions = (prefix) => {
-  if (redisClient) {
-    return {
-      store: new RedisStore({
-        client: redisClient,
-        prefix: `rate_limit:${prefix}:`,
-      }),
-    };
-  }
+// Using memory-based rate limiting (no Redis)
+const getStoreOptions = () => {
   return {};
 };
 
