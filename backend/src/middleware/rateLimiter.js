@@ -1,5 +1,12 @@
 const rateLimit = require('express-rate-limit');
-const { RedisStore } = require('rate-limit-redis');
+// Support both CommonJS and ESM imports for rate-limit-redis
+const RedisStore = require('rate-limit-redis').RedisStore || require('rate-limit-redis').default || (() => {
+  try {
+    return require('rate-limit-redis/dist/RedisStore').default;
+  } catch {
+    return null;
+  }
+})();
 const logger = require('../config/logger');
 
 // Try to initialize Redis store if Redis is available
