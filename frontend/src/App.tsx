@@ -1,5 +1,4 @@
 import { Routes, Route } from 'react-router-dom'
-import { Toaster } from '@radix-ui/react-toast'
 import { useEffect, useState } from 'react'
 import { isStandalone } from './main'
 
@@ -477,7 +476,6 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-      <Toaster />
     </>
   )
 }
