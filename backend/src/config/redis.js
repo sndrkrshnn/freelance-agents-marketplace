@@ -1,19 +1,34 @@
-const redis = require('redis');
 const logger = require('./logger');
 
 let client = null;
 let isConnected = false;
 let connectionAttempts = 0;
 const maxRetries = parseInt(process.env.CACHE_MAX_RETRIES) || 3;
+let redisNotAvailable = false;
 
 /**
  * Initialize Redis connection with retry logic
  */
 async function initializeRedis() {
+  // Check if redis module is available
+  if (redisNotAvailable) {
+    logger.info('Redis module not available, skipping Redis initialization');
+    return null;
+  }
+
+  try {
+    const redis = require('redis');
+  } catch (error) {
+    logger.warn('Redis module not installed, caching disabled');
+    redisNotAvailable = true;
+    return null;
+  }
+
   if (client) {
     return client;
   }
 
+  const redis = require('redis');
   const redisUrl = process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
 
   client = redis.createClient({
@@ -82,8 +97,12 @@ async function initializeRedis() {
  * Get Redis client (initialize if not exists)
  */
 async function getClient() {
+  if (redisNotAvailable) {
+    return null;
+  }
   if (!client) {
-    await initializeRedis();
+    const result = await initializeRedis();
+    return result;
   }
   return client;
 }
@@ -92,6 +111,9 @@ async function getClient() {
  * Check if Redis is connected and available
  */
 function isRedisAvailable() {
+  if (redisNotAvailable) {
+    return false;
+  }
   return isConnected && client && client.isOpen;
 }
 
