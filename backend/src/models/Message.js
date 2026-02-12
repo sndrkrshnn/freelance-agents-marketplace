@@ -104,7 +104,7 @@ class Message {
     };
   }
 
-  static async findByConversation(userId, otherUserId taskId = null, page = 1, limit = 50) {
+  static async findByConversation(userId, otherUserId, taskId = null, page = 1, limit = 50) {
     const offset = (page - 1) * limit;
 
     let query = `
