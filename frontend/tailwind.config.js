@@ -20,6 +20,14 @@ export default {
           900: '#0c4a6e',
           950: '#082f49',
         },
+        // Neo-Brutalist colors from index.css
+        black: '#0a0a0a',
+        white: '#fafafa',
+        'acid-green': '#ccff00',
+        'burnt-orange': '#ff4500',
+        'electric-blue': '#00d4ff',
+        'hot-pink': '#ff006e',
+        yellow: '#ffda00',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

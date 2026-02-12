@@ -13,50 +13,15 @@
  * ------------------------------------------------
  */
 
-:root {
-  /* Neo-Brutalist Color Palette */
-  --color-black: #0a0a0a;
-  --color-white: #fafafa;
-  --color-acid-green: #ccff00;
-  --color-burnt-orange: #ff4500;
-  --color-electric-blue: #00d4ff;
-  --color-hot-pink: #ff006e;
-  --color-yellow: #ffda00;
-  --color-gray-100: #f4f4f4;
-  --color-gray-200: #e5e5e5;
-  --color-gray-800: #2d2d2d;
-  
-  /* Typography */
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-mono: 'Space Mono', monospace;
-  
-  /* Borders & Shadows - Sharp, intentional */
-  --border-thick: 3px solid var(--color-black);
-  --border-thin: 1px solid var(--color-black);
-  --shadow-hard: 4px 4px 0px 0px var(--color-black);
-  --shadow-hard-lg: 8px 8px 0px 0px var(--color-black);
-  
-  /* Spacing - Generous */
-  --space-xs: 0.5rem;
-  --space-sm: 1rem;
-  --space-md: 2rem;
-  --space-lg: 4rem;
-  --space-xl: 6rem;
-}
-
-/* ============================================
-   BASE STYLES
-============================================ */
-
 @layer base {
   * {
-    border-color: var(--color-black);
+    border-color: #0a0a0a;
   }
   
   body {
-    font-family: var(--font-display);
-    background-color: var(--color-white);
-    color: var(--color-black);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    background-color: #fafafa;
+    color: #0a0a0a;
     font-feature-settings: "rlig" 1, "calt" 1;
     line-height: 1.6;
     overflow-x: hidden;
@@ -64,8 +29,8 @@
   
   /* Selection styling */
   ::selection {
-    background-color: var(--color-acid-green);
-    color: var(--color-black);
+    background-color: #ccff00;
+    color: #0a0a0a;
   }
   
   /* Smooth scrolling */
@@ -75,7 +40,7 @@
   
   /* Headings */
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.1;
@@ -96,13 +61,13 @@
   
   /* Monospace for code, data, numbers */
   .font-mono {
-    font-family: var(--font-mono);
+    font-family: 'Space Mono', monospace;
     letter-spacing: -0.03em;
   }
   
   /* Focus visible for keyboard navigation */
   :focus-visible {
-    outline: 3px solid var(--color-acid-green);
+    outline: 3px solid #ccff00;
     outline-offset: 2px;
   }
   
@@ -163,79 +128,6 @@
 }
 
 /* ============================================
-   UTILITY CLASSES
-============================================ */
-
-@layer utilities {
-  /* Staggered reveal delays */
-  .animate-reveal-1 { animation: reveal-up 0.6s ease-out 0.1s backwards; }
-  .animate-reveal-2 { animation: reveal-up 0.6s ease-out 0.2s backwards; }
-  .animate-reveal-3 { animation: reveal-up 0.6s ease-out 0.3s backwards; }
-  .animate-reveal-4 { animation: reveal-up 0.6s ease-out 0.4s backwards; }
-  .animate-reveal-5 { animation: reveal-up 0.6s ease-out 0.5s backwards; }
-  
-  .animate-slide-left { animation: slide-in-left 0.6s ease-out backwards; }
-  .animate-slide-right { animation: slide-in-right 0.6s ease-out backwards; }
-  
-  /* Marquee for scrolling text */
-  .marquee {
-    display: flex;
-    overflow: hidden;
-    white-space: nowrap;
-  }
-  .marquee-content {
-    display: flex;
-    animation: marquee 20s linear infinite;
-  }
-  
-  /* Glitch effect on hover */
-  .glitch-hover:hover {
-    animation: glitch 0.3s ease-in-out;
-  }
-  
-  /* Noise texture overlay */
-  .noise-bg {
-    position: relative;
-    background-color: var(--color-white);
-  }
-  .noise-bg::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    opacity: 0.03;
-    pointer-events: none;
-  }
-  
-  /* Diagonal stripe pattern */
-  .diagonal-stripes {
-    background: repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 10px,
-      var(--color-gray-200) 10px,
-      var(--color-gray-200) 20px
-    );
-  }
-  
-  /* Grid pattern */
-  .grid-pattern {
-    background-image: 
-      linear-gradient(var(--border-thin) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border-thin) 1px, transparent 1px);
-    background-size: 40px 40px;
-  }
-  
-  /* Remove tap highlight */
-  .no-tap-highlight {
-    -webkit-tap-highlight-color: transparent;
-  }
-}
-
-/* ============================================
    COMPONENT STYLES
 ============================================ */
 
@@ -250,15 +142,15 @@
     justify-content: center;
     gap: 0.75rem;
     padding: 0.875rem 1.75rem;
-    font-family: var(--font-display);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
     font-size: 1rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--color-black);
-    background-color: var(--color-white);
-    border: var(--border-thick);
-    box-shadow: var(--shadow-hard);
+    color: #0a0a0a;
+    background-color: #fafafa;
+    border: 3px solid #0a0a0a;
+    box-shadow: 4px 4px 0px 0px #0a0a0a;
     cursor: pointer;
     transition: all 0.15s ease;
     text-decoration: none;
@@ -267,43 +159,48 @@
   
   .btn:hover {
     transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0px 0px var(--color-black);
+    box-shadow: 6px 6px 0px 0px #0a0a0a;
   }
   
   .btn:active {
     transform: translate(2px, 2px);
-    box-shadow: 0px 0px 0px 0px var(--color-black);
+    box-shadow: 0px 0px 0px 0px #0a0a0a;
   }
   
   .btn-primary {
-    background-color: var(--color-acid-green);
+    background-color: #ccff00;
   }
   
   .btn-secondary {
-    background-color: var(--color-electric-blue);
+    background-color: #00d4ff;
   }
   
   .btn-accent {
-    background-color: var(--color-burnt-orange);
+    background-color: #ff4500;
     color: white;
   }
   
   .btn-pink {
-    background-color: var(--color-hot-pink);
+    background-color: #ff006e;
     color: white;
   }
   
   .btn-yellow {
-    background-color: var(--color-yellow);
+    background-color: #ffda00;
   }
   
   .btn-dark {
-    background-color: var(--color-black);
+    background-color: #0a0a0a;
     color: white;
   }
   
   .btn-outline {
     background-color: transparent;
+  }
+  
+  .btn-white {
+    background-color: #fafafa;
+    color: #0a0a0a;
   }
   
   .btn-large {
@@ -320,9 +217,9 @@
      CARDS - Sharp, Intentional
   ========================================= */
   .card {
-    background-color: var(--color-white);
-    border: var(--border-thick);
-    box-shadow: var(--shadow-hard);
+    background-color: #fafafa;
+    border: 3px solid #0a0a0a;
+    box-shadow: 4px 4px 0px 0px #0a0a0a;
     padding: 2rem;
     position: relative;
     transition: all 0.2s ease;
@@ -330,24 +227,24 @@
   
   .card:hover {
     transform: translate(-4px, -4px);
-    box-shadow: 8px 8px 0px 0px var(--color-black);
+    box-shadow: 8px 8px 0px 0px #0a0a0a;
   }
   
   .card-accent {
-    background-color: var(--color-acid-green);
+    background-color: #ccff00;
   }
   
   .card-blue {
-    background-color: var(--color-electric-blue);
+    background-color: #00d4ff;
   }
   
   .card-pink {
-    background-color: var(--color-hot-pink);
+    background-color: #ff006e;
     color: white;
   }
   
   .card-dark {
-    background-color: var(--color-black);
+    background-color: #0a0a0a;
     color: white;
   }
   
@@ -357,27 +254,27 @@
   .input {
     width: 100%;
     padding: 0.875rem 1rem;
-    font-family: var(--font-display);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
     font-size: 1rem;
-    color: var(--color-black);
-    background-color: var(--color-white);
-    border: var(--border-thick);
-    box-shadow: var(--shadow-hard);
+    color: #0a0a0a;
+    background-color: #fafafa;
+    border: 3px solid #0a0a0a;
+    box-shadow: 4px 4px 0px 0px #0a0a0a;
     transition: all 0.15s ease;
     outline: none;
   }
   
   .input:hover {
-    background-color: var(--color-gray-100);
+    background-color: #f4f4f4;
   }
   
   .input:focus {
-    background-color: var(--color-acid-green);
-    box-shadow: 6px 6px 0px 0px var(--color-black);
+    background-color: #ccff00;
+    box-shadow: 6px 6px 0px 0px #0a0a0a;
   }
   
   .input::placeholder {
-    color: var(--color-gray-800);
+    color: #2d2d2d;
   }
   
   /* =========================================
@@ -386,43 +283,44 @@
   .tag {
     display: inline-block;
     padding: 0.375rem 0.75rem;
-    font-family: var(--font-mono);
+    font-family: 'Space Mono', monospace;
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    border: 2px solid var(--color-black);
-    background-color: var(--color-white);
+    border: 2px solid #0a0a0a;
+    background-color: #fafafa;
   }
   
-  .tag-green { background-color: var(--color-acid-green); }
-  .tag-blue { background-color: var(--color-electric-blue); }
-  .tag-pink { background-color: var(--color-hot-pink); color: white; }
-  .tag-orange { background-color: var(--color-burnt-orange); color: white; }
-  .tag-yellow { background-color: var(--color-yellow); }
-  .tag-dark { background-color: var(--color-black); color: white; }
+  .tag-green { background-color: #ccff00; }
+  .tag-blue { background-color: #00d4ff; }
+  .tag-pink { background-color: #ff006e; color: white; }
+  .tag-orange { background-color: #ff4500; color: white; }
+  .tag-yellow { background-color: #ffda00; }
+  .tag-dark { background-color: #0a0a0a; color: white; }
+  .tag-white { background-color: #fafafa; }
   
   /* =========================================
      SECTIONS - Asymmetric Layouts
   ========================================= */
   .section {
-    padding: var(--space-xl) var(--space-md);
+    padding: 6rem 2rem;
     position: relative;
   }
   
   .section-diagonal {
     position: relative;
-    padding: var(--space-xl) var(--space-md);
+    padding: 6rem 2rem;
     clip-path: polygon(0 0, 100% 0, 100% 90%, 0 100%);
   }
   
   .section-stripes {
     background: repeating-linear-gradient(
       -45deg,
-      var(--color-white),
-      var(--color-white) 30px,
-      var(--color-gray-100) 30px,
-      var(--color-gray-100) 60px
+      #fafafa,
+      #fafafa 30px,
+      #e5e5e5 30px,
+      #e5e5e5 60px
     );
   }
   
@@ -430,17 +328,17 @@
      MARQUEE BANNER
   ========================================= */
   .marquee-banner {
-    background-color: var(--color-black);
-    color: var(--color-white);
+    background-color: #0a0a0a;
+    color: #fafafa;
     padding: 1rem 0;
-    border-top: var(--border-thick);
-    border-bottom: var(--border-thick);
+    border-top: 3px solid #0a0a0a;
+    border-bottom: 3px solid #0a0a0a;
     overflow: hidden;
   }
   
   .marquee-banner-text {
     display: flex;
-    font-family: var(--font-mono);
+    font-family: 'Space Mono', monospace;
     font-size: 0.875rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -466,13 +364,13 @@
     left: 0;
     width: 100%;
     height: 8px;
-    background-color: var(--color-acid-green);
+    background-color: #ccff00;
     z-index: -1;
   }
   
   .headline-strike {
     text-decoration: line-through;
-    text-decoration-color: var(--color-hot-pink);
+    text-decoration-color: #ff006e;
     text-decoration-thickness: 4px;
   }
   
@@ -484,13 +382,13 @@
     flex-direction: column;
     align-items: flex-start;
     padding: 1.5rem;
-    background-color: var(--color-black);
+    background-color: #0a0a0a;
     color: white;
     border: none;
   }
   
   .stat-value {
-    font-family: var(--font-mono);
+    font-family: 'Space Mono', monospace;
     font-size: 3rem;
     font-weight: 700;
     line-height: 1;
@@ -513,120 +411,167 @@
   }
   
   ::-webkit-scrollbar-track {
-    background: var(--color-gray-100);
-    border: var(--border-thin);
+    background: #f4f4f4;
+    border: 1px solid #0a0a0a;
   }
   
   ::-webkit-scrollbar-thumb {
-    background: var(--color-black);
-    border: 2px solid var(--color-gray-100);
+    background: #0a0a0a;
+    border: 2px solid #f4f4f4;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-acid-green);
+    background: #ccff00;
   }
   
   /* =========================================
-     MOBILE-SPECIFIC
+     BORDER UTILITIES
   ========================================= */
-  @media (max-width: 768px) {
-    .section {
-      padding: var(--space-md) var(--space-sm);
-    }
-    
-    .mobile-drawer {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 85%;
-      max-width: 320px;
-      height: 100%;
-      background-color: var(--color-white);
-      border-right: var(--border-thick);
-      z-index: 100;
-      transition: transform 0.3s ease;
-    }
-    
-    .mobile-drawer.closed {
-      transform: translateX(-100%);
-    }
-    
-    .mobile-drawer.open {
-      transform: translateX(0);
-    }
-    
-    .backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      z-index: 50;
-    }
+  .border-thick {
+    border: 3px solid #0a0a0a;
   }
   
-  /* =========================================
-     ACCESSIBILITY
-  ========================================= */
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      transition-duration: 0.01ms !important;
-    }
-    
-    .marquee-banner-text {
-      animation: none;
-    }
+  .border-thin {
+    border: 1px solid #0a0a0a;
   }
   
-  /* =========================================
-     PRINT STYLES
-  ========================================= */
-  @media print {
-    .no-print {
-      display: none !important;
-    }
-    
-    body {
-      background-color: white !important;
-      color: black !important;
-    }
+  .bg-acid-green {
+    background-color: #ccff00;
   }
   
-  /* =========================================
-     PWA SPECIFIC
-  ========================================= */
-  body.pwa-standalone {
-    padding-top: env(safe-area-inset-top);
+  .text-acid-green {
+    color: #ccff00;
   }
   
-  /* =========================================
-     LOADING STATES
-  ========================================= */
-  .skeleton {
-    background: linear-gradient(
-      90deg,
-      var(--color-gray-200) 0%,
-      var(--color-gray-100) 50%,
-      var(--color-gray-200) 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+  .bg-black {
+    background-color: #0a0a0a;
   }
   
-  @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
-  
-  /* =========================================
-     FOCUS RINGS - Sharp Corners
-  ========================================= */
-  .focus-ring {
-    outline: 3px solid var(--color-acid-green);
-    outline-offset: 2px;
+  .text-black {
+    color: #0a0a0a;
   }
 }
+
+/* ============================================
+   UTILITY CLASSES
+============================================ */
+
+@layer utilities {
+  /* Staggered reveal delays */
+  .animate-reveal-1 { animation: reveal-up 0.6s ease-out 0.1s backwards; }
+  .animate-reveal-2 { animation: reveal-up 0.6s ease-out 0.2s backwards; }
+  .animate-reveal-3 { animation: reveal-up 0.6s ease-out 0.3s backwards; }
+  .animate-reveal-4 { animation: reveal-up 0.6s ease-out 0.4s backwards; }
+  .animate-reveal-5 { animation: reveal-up 0.6s ease-out 0.5s backwards; }
+  
+  .animate-slide-left { animation: slide-in-left 0.6s ease-out backwards; }
+  .animate-slide-right { animation: slide-in-right 0.6s ease-out backwards; }
+  
+  /* Glitch effect on hover */
+  .glitch-hover:hover {
+    animation: glitch 0.3s ease-in-out;
+  }
+  
+  /* Noise texture overlay */
+  .noise-bg {
+    position: relative;
+    background-color: #fafafa;
+  }
+  .noise-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+  }
+  
+  /* Diagonal stripe pattern */
+  .diagonal-stripes {
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      #e5e5e5 10px,
+      #e5e5e5 20px
+    );
+  }
+  
+  /* Grid pattern */
+  .grid-pattern {
+    background-image: 
+      linear-gradient(1px solid #0a0a0a 1px, transparent 1px),
+      linear-gradient(90deg, 1px solid #0a0a0a 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+}
+
+/* ============================================
+   MOBILE-SPECIFIC
+============================================ */
+
+@media (max-width: 768px) {
+  .section {
+    padding: 2rem 1rem;
+  }
+  
+  .mobile-drawer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 85%;
+    max-width: 320px;
+    height: 100%;
+    background-color: #fafafa;
+    border-right: 3px solid #0a0a0a;
+    z-index: 100;
+    transition: transform 0.3s ease;
+  }
+  
+  .mobile-drawer.closed {
+    transform: translateX(-100%);
+  }
+  
+  .mobile-drawer.open {
+    transform: translateX(0);
+  }
+  
+  .backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 50;
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY
+============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .marquee-banner-text {
+    animation: none;
+  }
+}
+
+/* ============================================
+   PWA SPECIFIC
+============================================ */
+
+body.pwa-standalone {
+  padding-top: env(safe-area-inset-top);
+}
+

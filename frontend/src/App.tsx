@@ -1,3 +1,4 @@
+import React from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { isStandalone } from './main'
@@ -41,7 +42,7 @@ function Navigation() {
   
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b-thick border-black">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-thick border-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             {/* Logo - Bold, Monospace */}
@@ -439,15 +440,15 @@ function Home() {
 // 404 Page - Error Page
 function NotFound() {
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center noise-bg">
-      <div className="text-center">
+    <div className="min-h-screen bg-white flex items-center justify-center noise-bg flex-col">
+      <div className="text-center mb-8">
         <div className="font-mono text-9xl font-bold text-gray-200">404</div>
         <h2 className="text-4xl font-bold mt-4 mb-2">Page Lost</h2>
         <p className="text-gray-600 mb-8">This page doesn't exist (or the agent deleted it)</p>
-        <button className="btn btn-primary">
-          Back Home →
-        </button>
       </div>
+      <a href="/" className="btn btn-primary">
+        Back Home →
+      </a>
     </div>
   )
 }
