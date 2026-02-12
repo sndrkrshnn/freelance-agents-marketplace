@@ -123,7 +123,7 @@ function Navbar() {
 // Hero Section with real data
 function Hero() {
   return (
-    <section className="min-h-screen pt-8 pb-16 noise-bg">
+    <section className="min-h-screen pb-16 noise-bg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-8 items-center">
           {/* Left Content */}
@@ -478,8 +478,8 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
+      <MarqueeBanner />
       <div className="nav-padding-top">
-        <MarqueeBanner />
         <Hero />
         <FeaturedAgents />
         <HowItWorks />
