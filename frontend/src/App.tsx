@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import HomePage from './pages/Home'
 import PostTaskPage from './pages/PostTask'
 import BrowseAgentsPage from './pages/BrowseAgents'
@@ -11,46 +11,6 @@ import TaskDetailPage from './pages/TaskDetail'
 import AgentDetailPage from './pages/AgentDetail'
 import OfflinePage from './pages/Offline'
 import { isStandalone } from './main'
-
-// Navigation Component
-function Navigation() {
-  const location = useLocation()
-  const isHomePage = location.pathname === '/'
-
-  return (
-    !isHomePage && (
-      <nav className="nav-fixed">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <a href="/" className="flex items-center gap-2">
-              <span className="font-mono text-2xl font-bold">AGENTS.</span>
-              <span className="font-mono text-sm bg-black text-white px-2 py-1">MARKET</span>
-            </a>
-
-            <div className="hidden md:flex items-center gap-1">
-              <a href="/agents" className="px-4 py-2 font-mono text-sm font-bold hover:bg-black hover:text-white transition-colors">
-                FIND_AGENTS
-              </a>
-              <a href="/tasks" className="px-4 py-2 font-mono text-sm font-bold hover:bg-black hover:text-white transition-colors">
-                BROWSE_TASKS
-              </a>
-              <a href="/post-task" className="px-4 py-2 font-mono text-sm font-bold hover:bg-black hover:text-white transition-colors">
-                POST_TASK
-              </a>
-              <a href="/login" className="btn btn-primary ml-4">
-                GET_STARTED
-              </a>
-            </div>
-
-            <a href="/dashboard" className="btn btn-outline btn-small">
-              DASHBOARD
-            </a>
-          </div>
-        </div>
-      </nav>
-    )
-  )
-}
 
 // Main App Component
 function App() {
@@ -95,94 +55,30 @@ function App() {
         {/* Home page has its own navigation */}
         <Route path="/" element={<><HomePage /></>} />
 
-        {/* Browse Agents */}
-        <Route
-          path="/agents"
-          element={
-            <>
-              <Navigation />
-              <BrowseAgentsPage />
-            </>
-          }
-        />
-        <Route
-          path="/agents/:id"
-          element={
-            <>
-              <Navigation />
-              <AgentDetailPage />
-            </>
-          }
-        />
+        {/* Browse Agents - Page has its own navbar */}
+        <Route path="/agents" element={<><BrowseAgentsPage /></>} />
+        <Route path="/agents/:id" element={<><AgentDetailPage /></>} />
 
-        {/* Browse Tasks */}
-        <Route
-          path="/tasks"
-          element={
-            <>
-              <Navigation />
-              <BrowseTasksPage />
-            </>
-          }
-        />
-        <Route
-          path="/tasks/:id"
-          element={
-            <>
-              <Navigation />
-              <TaskDetailPage />
-            </>
-          }
-        />
+        {/* Browse Tasks - Page has its own navbar */}
+        <Route path="/tasks" element={<><BrowseTasksPage /></>} />
+        <Route path="/tasks/:id" element={<><TaskDetailPage /></>} />
 
-        {/* Post Task */}
-        <Route
-          path="/post-task"
-          element={
-            <>
-              <Navigation />
-              <PostTaskPage />
-            </>
-          }
-        />
+        {/* Post Task - Page has its own navbar */}
+        <Route path="/post-task" element={<><PostTaskPage /></>} />
 
-        {/* Authentication */}
-        <Route
-          path="/login"
-          element={
-            <>
-              <Navigation />
-              <LoginPage />
-            </>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <>
-              <Navigation />
-              <RegisterPage />
-            </>
-          }
-        />
+        {/* Authentication - Pages have their own navbar */}
+        <Route path="/login" element={<><LoginPage /></>} />
+        <Route path="/register" element={<><RegisterPage /></>} />
 
-        {/* Dashboard */}
-        <Route
-          path="/dashboard"
-          element={
-            <>
-              <Navigation />
-              <DashboardPage />
-            </>
-          }
-        />
+        {/* Dashboard - Page has its own navbar */}
+        <Route path="/dashboard" element={<><DashboardPage /></>} />
 
         {/* 404 fallback */}
         <Route path="/offline" element={<OfflinePage />} />
         <Route
           path="*"
           element={
-            <div className="min-h-screen bg-white flex items-center justify-center flex-col pt-24">
+            <div className="min-h-screen bg-white flex items-center justify-center flex-col">
               <div className="text-center mb-8">
                 <div className="font-mono text-9xl font-bold text-gray-200">404</div>
                 <h2 className="text-4xl font-bold mt-4 mb-2">Page Lost</h2>
