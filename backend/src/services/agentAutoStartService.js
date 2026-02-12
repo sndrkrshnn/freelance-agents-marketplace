@@ -90,49 +90,6 @@ class AgentAutoStartService {
       return null;
     }
   }
-
-  /**
-   * Check and start failed/crashed agents
-   * This can be called by a scheduler to recover agents that stopped unexpectedly
-   */
-  async checkAndRecoverAgents() {
-    try {
-      logger.info('Checking for agents that need recovery');
-
-      const activeAgents = agentExecutionService.getAllActiveAgents();
-      let recoveredCount = 0;
-
-      for (const agent of activeAgents) {
-        // Check if agent has been stuck for more than 10 minutes
-        if (agent.status === 'running') {
-          const lastLogTime = agent.logs.length > 0
-            ? new Date(agent.logs[agent.logs.length - 1].timestamp)
-            : agent.startTime;
-
-          const stuckTime = Date.now() - lastLogTime.getTime();
-
-          if (stuckTime > 10 * 60 * 1000) {
-            logger.warn(`Agent ${agent.id} for task ${agent.taskId} appears stuck`);
-
-            try {
-              // Try to recover by restarting the agent
-              await agentExecutionService.stopAgent(agent.taskId);
-              await agentExecutionService.createAgentInstance(agent.taskId, agent.agentId);
-              recoveredCount++;
-            } catch (error) {
-              logger.error(`Failed to recover agent ${agent.id}:`, error);
-            }
-          }
-        }
-      }
-
-      logger.info(`Agent recovery check completed. Recovered: ${recoveredCount}`);
-      return recoveredCount;
-    } catch (error) {
-      logger.error('Agent recovery check failed:', error);
-      return 0;
-    }
-  }
 }
 
 // Export singleton instance
