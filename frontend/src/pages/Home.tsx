@@ -31,8 +31,8 @@ function MarqueeBanner() {
   )
 }
 
-// Navigation Component
-function Navigation() {
+// Navbar Component - Fixed header for home page
+function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
@@ -459,9 +459,8 @@ function Footer() {
         </div>
 
         <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4">
+          <div>
             <span className="font-mono text-sm text-gray-500">© 2026 AGENTS.MARKET</span>
-            <span className="tag tag-dark text-gray-400">BUILT_WITH_ANTI_SLOP_DESIGN</span>
           </div>
           <div className="flex gap-4">
             <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="font-mono text-sm hover:text-acid-green">TWITTER</a>
@@ -478,7 +477,7 @@ function Footer() {
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-white">
-      <Navigation />
+      <Navbar />
       <div className="nav-padding-top">
         <MarqueeBanner />
         <Hero />
