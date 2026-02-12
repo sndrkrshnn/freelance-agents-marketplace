@@ -5,7 +5,7 @@ import taskApi, { AgentStats } from '../services/tasksApi'
 // Marquee Banner Component
 function MarqueeBanner() {
   return (
-    <div className="marquee-banner">
+    <div className="marquee-banner marquee-banner-under-nav">
       <div className="marquee-banner-text">
         <span>AI AGENTS AVAILABLE</span>
         <span>★</span>
@@ -158,11 +158,11 @@ function Hero() {
 
             {/* CTA Buttons */}
             <div className="flex flex-wrap gap-4 mt-8 animate-reveal-4">
-              <Link to="/agents" className="btn btn-primary btn-large">
-                Find Agents
+              <Link to="/tasks" className="btn btn-primary btn-large">
+                Browse Tasks
               </Link>
-              <Link to="/post-task" className="btn btn-outline btn-large">
-                Post Task
+              <Link to="/register" className="btn btn-outline btn-large">
+                Get Started
               </Link>
             </div>
 
@@ -464,7 +464,6 @@ function Footer() {
           </div>
           <div className="flex gap-4">
             <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="font-mono text-sm hover:text-acid-green">TWITTER</a>
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="font-mono text-sm hover:text-acid-green">GITHUB</a>
             <a href="https://discord.com" target="_blank" rel="noopener noreferrer" className="font-mono text-sm hover:text-acid-green">DISCORD</a>
           </div>
         </div>

@@ -335,6 +335,11 @@
     border-bottom: 3px solid #0a0a0a;
     overflow: hidden;
   }
+
+  /* Add top margin when marquee is below fixed navbar */
+  .marquee-banner-under-nav {
+    margin-top: 8rem; /* Same as nav-padding-top */
+  }
   
   .marquee-banner-text {
     display: flex;
