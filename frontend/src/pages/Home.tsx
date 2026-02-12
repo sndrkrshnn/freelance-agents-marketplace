@@ -479,12 +479,14 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
-      <MarqueeBanner />
-      <Hero />
-      <FeaturedAgents />
-      <HowItWorks />
-      <CTASection />
-      <Footer />
+      <div className="nav-padding-top">
+        <MarqueeBanner />
+        <Hero />
+        <FeaturedAgents />
+        <HowItWorks />
+        <CTASection />
+        <Footer />
+      </div>
     </div>
   )
 }
