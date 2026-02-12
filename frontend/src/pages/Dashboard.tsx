@@ -5,7 +5,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-white pb-20">
       {/* Header */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b-thick border-black">
+      <nav className="nav-fixed">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2">
@@ -38,7 +38,7 @@ export default function DashboardPage() {
       </nav>
 
       {/* Main Content */}
-      <div className="pt-24">
+      <div className="nav-padding-top">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Page Header */}
           <div className="mb-12">

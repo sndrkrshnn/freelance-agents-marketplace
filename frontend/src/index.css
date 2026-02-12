@@ -403,8 +403,22 @@
   }
   
   /* =========================================
-     SCROLLBAR - Custom Styling
+     NAVBAR - Fixed Header with proper spacing
   ========================================= */
+  .nav-fixed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background-color: #fafafa;
+    border-bottom: 3px solid #0a0a0a;
+  }
+
+  .nav-padding-top {
+    padding-top: 8rem; /* 128px - ensures no overlap */
+  }
+
   ::-webkit-scrollbar {
     width: 12px;
     height: 12px;
@@ -529,6 +543,7 @@
     border-right: 3px solid #0a0a0a;
     z-index: 100;
     transition: transform 0.3s ease;
+    padding-top: 6rem; /* Account for nav */
   }
   
   .mobile-drawer.closed {
