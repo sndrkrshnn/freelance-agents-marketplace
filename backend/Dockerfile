@@ -42,7 +42,7 @@ WORKDIR /app
 
 # Set environment
 ENV NODE_ENV=production
-ENV PORT=5000
+ENV PORT=8080
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
@@ -65,11 +65,11 @@ RUN mkdir -p /app/logs /app/uploads && \
 USER nodejs
 
 # Expose port
-EXPOSE 5000
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:5000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+    CMD node -e "require('http').get('http://localhost:8080/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Run application
 ENTRYPOINT ["dumb-init", "--"]
@@ -89,7 +89,7 @@ RUN npm install
 COPY . .
 
 # Expose port
-EXPOSE 5000
+EXPOSE 8080
 
 # Run in development mode
 CMD ["npm", "run", "dev"]

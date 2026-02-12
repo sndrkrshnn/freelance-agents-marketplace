@@ -49,7 +49,7 @@ services:
     
     # Expose debug ports
     ports:
-      - "5000:5000"   # API
+      - "8080:8080"   # API
       - "9229:9229"   # Node.js debugger
     
     # Override command to use nodemon for hot-reload
@@ -82,7 +82,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: http://localhost:5000/api
+        VITE_API_BASE_URL: http://localhost:8080/api
         VITE_APP_NAME: "Freelance AI Marketplace (DEV)"
         VITE_APP_VERSION: "dev"
     image: freelance-marketplace-frontend:dev
@@ -114,7 +114,7 @@ services:
     
     # Environment variables for Vite
     environment:
-      VITE_API_BASE_URL: http://localhost:5000/api
+      VITE_API_BASE_URL: http://localhost:8080/api
     
     # Enhanced logging
     logging:
@@ -152,7 +152,7 @@ services:
       - backend
     
     ports:
-      - "8080:80"
+      - "5050:80"
     
     depends_on:
       postgres:
