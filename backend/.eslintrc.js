@@ -27,8 +27,8 @@ module.exports = {
     'no-var': 'error',
     'prefer-const': 'error',
     'no-unused-vars': 'off', // Will be handled if we add TypeScript
-    'eqeqeq': ['error', 'always'],
-    'curly': ['error', 'all'],
+    eqeqeq: ['error', 'always'],
+    curly: ['error', 'all'],
     'quote-props': ['error', 'as-needed'],
 
     // Security
@@ -41,7 +41,7 @@ module.exports = {
     'security/detect-child-process': 'warn',
     'security/detect-disable-mustache-escape': 'error',
     'security/detect-no-csrf-before-method-override': 'off',
-    'security/detect-express-xmlbodyparser': 'error',
+    // 'security/detect-express-xmlbodyparser': 'error', // Not available in current plugin version
     'security/detect-possible-timing-attacks': 'warn',
     'security/detect-pseudoRandomBytes': 'warn',
 

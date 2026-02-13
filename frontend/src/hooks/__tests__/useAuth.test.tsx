@@ -3,11 +3,22 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuth } from '../useAuth'
 
+// Mock user data
+const mockUser = {
+  id: 'user-1',
+  email: 'test@example.com',
+  role: 'client',
+  name: 'Test User',
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=test',
+  createdAt: new Date(),
+}
+
 // Mock API service
 vi.mock('@/services/api', () => ({
   api: {
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
   },
 }))
 

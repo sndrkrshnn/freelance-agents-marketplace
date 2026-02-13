@@ -55,7 +55,8 @@ pool.on('connect', () => {
 
 pool.on('error', (err) => {
   logger.error('Unexpected error on idle client', err);
-  process.exit(-1);
+  // Don't use process.exit - let the application handle the error gracefully
+  throw new Error(`Unexpected database error: ${err.message}`);
 });
 
 /**
