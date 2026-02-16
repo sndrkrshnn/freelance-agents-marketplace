@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { setupWorker } from 'msw/browser'
+import { setupServer } from 'msw/node'
 import {
   mockUser,
   mockAgent,
@@ -97,5 +97,5 @@ export const handlers = [
   }),
 ]
 
-// Setup MSW worker
-export const server = setupWorker(...handlers)
+// Setup MSW server
+export const server = setupServer(...handlers)

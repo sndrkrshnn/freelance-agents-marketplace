@@ -1,40 +1,18 @@
-import webpush from 'web-push';
-import db from '../db/connection.js';
+const webpush = require('web-push');
+const db = require('../config/database');
 
 // Configure VAPID keys
 webpush.setVapidDetails(
   process.env.VAPID_EMAIL || 'admin@freelance-agents-marketplace.com',
-  process.env.VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
+  process.env.VAPID_PUBLIC_KEY || '',
+  process.env.VAPID_PRIVATE_KEY || ''
 );
-
-interface PushSubscription {
-  endpoint: string;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
-}
-
-interface NotificationPayload {
-  title: string;
-  body: string;
-  icon?: string;
-  badge?: string;
-  data?: any;
-  url?: string;
-  actions?: Array<{
-    action: string;
-    title: string;
-    icon?: string;
-  }>;
-}
 
 class PushService {
   /**
    * Save push subscription to database
    */
-  async subscribe(userId: string, subscription: PushSubscription): Promise<void> {
+  async subscribe(userId, subscription) {
     try {
       // Check if subscription already exists
       const existing = await db.query(
@@ -80,7 +58,7 @@ class PushService {
   /**
    * Remove push subscription from database
    */
-  async unsubscribe(userId: string, subscription: PushSubscription): Promise<void> {
+  async unsubscribe(userId, subscription) {
     try {
       await db.query(
         'DELETE FROM push_subscriptions WHERE user_id = $1 AND endpoint = $2',
@@ -97,7 +75,7 @@ class PushService {
   /**
    * Get all subscriptions for a user
    */
-  async getUserSubscriptions(userId: string): Promise<PushSubscription[]> {
+  async getUserSubscriptions(userId) {
     try {
       const result = await db.query(
         'SELECT endpoint, p256dh_key, auth_key FROM push_subscriptions WHERE user_id = $1 AND is_active = true',
@@ -120,7 +98,7 @@ class PushService {
   /**
    * Send notification to a specific user
    */
-  async sendNotification(userId: string, payload: NotificationPayload): Promise<void> {
+  async sendNotification(userId, payload) {
     const subscriptions = await this.getUserSubscriptions(userId);
 
     if (subscriptions.length === 0) {
@@ -151,7 +129,7 @@ class PushService {
   /**
    * Send notification to multiple users
    */
-  async sendNotificationToUserIds(userIds: string[], payload: NotificationPayload): Promise<void> {
+  async sendNotificationToUserIds(userIds, payload) {
     const promises = userIds.map(userId => this.sendNotification(userId, payload));
     await Promise.allSettled(promises);
   }
@@ -159,7 +137,7 @@ class PushService {
   /**
    * Send notification when a task is assigned to an agent
    */
-  async taskAssigned(agentId: string, taskInfo: any): Promise<void> {
+  async taskAssigned(agentId, taskInfo) {
     await this.sendNotification(agentId, {
       title: '🎯 New Task Assigned!',
       body: taskInfo.description || `You have been assigned a new task: ${taskInfo.title}`,
@@ -177,7 +155,7 @@ class PushService {
   /**
    * Send notification when a task is created (for matching agents)
    */
-  async taskCreated(taskInfo: any, matchingAgentIds: string[]): Promise<void> {
+  async taskCreated(taskInfo, matchingAgentIds) {
     await this.sendNotificationToUserIds(matchingAgentIds, {
       title: '📋 New Task Available!',
       body: `A new task matching your skills has been posted: ${taskInfo.title}`,
@@ -195,7 +173,7 @@ class PushService {
   /**
    * Send notification when a message is received
    */
-  async messageReceived(userId: string, message: any): Promise<void> {
+  async messageReceived(userId, message) {
     await this.sendNotification(userId, {
       title: `💬 New message from ${message.senderName}`,
       body: message.content?.substring(0, 100) + (message.content?.length > 100 ? '...' : ''),
@@ -213,7 +191,7 @@ class PushService {
   /**
    * Send notification when a proposal is received
    */
-  async proposalReceived(clientId: string, proposal: any): Promise<void> {
+  async proposalReceived(clientId, proposal) {
     await this.sendNotification(clientId, {
       title: '📝 New Proposal Received',
       body: `${proposal.agentName} has submitted a proposal for your task`,
@@ -231,7 +209,7 @@ class PushService {
   /**
    * Send notification when payment is received
    */
-  async paymentReceived(userId: string, payment: any): Promise<void> {
+  async paymentReceived(userId, payment) {
     await this.sendNotification(userId, {
       title: '💰 Payment Received',
       body: `You received a payment of $${payment.amount.toFixed(2)}`,
@@ -249,8 +227,8 @@ class PushService {
   /**
    * Send notification when task status changes
    */
-  async taskStatusChanged(userId: string, taskId: string, status: string, taskTitle: string): Promise<void> {
-    const statusMessages: Record<string, string> = {
+  async taskStatusChanged(userId, taskId, status, taskTitle) {
+    const statusMessages = {
       in_progress: 'Task is now in progress',
       completed: 'Task has been completed',
       disputed: 'Task has been disputed',
@@ -270,7 +248,7 @@ class PushService {
   /**
    * Send badge update notification
    */
-  async badgeEarned(userId: string, badge: { name: string; icon: string }): Promise<void> {
+  async badgeEarned(userId, badge) {
     await this.sendNotification(userId, {
       title: '🏆 New Badge Earned!',
       body: `Congratulations! You've earned the "${badge.name}" badge`,
@@ -284,7 +262,7 @@ class PushService {
   /**
    * Remove subscription by endpoint (for cleanup)
    */
-  private async removeSubscriptionByEndpoint(endpoint: string): Promise<void> {
+  async removeSubscriptionByEndpoint(endpoint) {
     try {
       await db.query(
         'UPDATE push_subscriptions SET is_active = false WHERE endpoint = $1',
@@ -298,7 +276,7 @@ class PushService {
   /**
    * Clean up inactive subscriptions
    */
-  async cleanupInactiveSubscriptions(): Promise<void> {
+  async cleanupInactiveSubscriptions() {
     try {
       // Mark subscriptions as inactive if they haven't been updated in 30 days
       await db.query(
@@ -316,11 +294,7 @@ class PushService {
   /**
    * Get push notification statistics
    */
-  async getStatistics(): Promise<{
-    totalSubscriptions: number;
-    activeSubscriptions: number;
-    notificationsSentToday: number;
-  }> {
+  async getStatistics() {
     try {
       const [totalResult, activeResult, todayResult] = await Promise.all([
         db.query('SELECT COUNT(*) FROM push_subscriptions'),
@@ -346,4 +320,4 @@ class PushService {
   }
 }
 
-export default new PushService();
+module.exports = new PushService();
