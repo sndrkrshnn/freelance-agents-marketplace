@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-export interface PushSubscription {
+export interface PushSubscriptionData {
   endpoint: string
   keys: {
     p256dh: string
@@ -9,7 +9,7 @@ export interface PushSubscription {
 }
 
 export function usePushNotifications() {
-  const [subscription, setSubscription] = useState<PushSubscription | null>(null)
+  const [subscription, setSubscription] = useState<PushSubscriptionData | null>(null)
   const [permission, setPermission] = useState<NotificationPermission>('default')
   const [supported, setSupported] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -32,7 +32,18 @@ export function usePushNotifications() {
     try {
       const registration = await navigator.serviceWorker.ready
       const existingSubscription = await registration.pushManager.getSubscription()
-      setSubscription(existingSubscription as unknown as PushSubscription | null)
+      if (existingSubscription) {
+        const subscriptionData = {
+          endpoint: existingSubscription.endpoint,
+          keys: {
+            p256dh: existingSubscription.getKey('p256dh') ? btoa(String.fromCharCode(...new Uint8Array(existingSubscription.getKey('p256dh')!))) : '',
+            auth: existingSubscription.getKey('auth') ? btoa(String.fromCharCode(...new Uint8Array(existingSubscription.getKey('auth')!))) : ''
+          }
+        }
+        setSubscription(subscriptionData)
+      } else {
+        setSubscription(null)
+      }
     } catch (error) {
       console.error('[usePushNotifications] Error getting subscription:', error)
     }
@@ -63,7 +74,7 @@ export function usePushNotifications() {
     return permission
   }
 
-  const subscribeUser = async (): Promise<PushSubscription | null> => {
+   const subscribeUser = async (): Promise<PushSubscriptionData | null> => {
     if (!supported) {
       return null
     }
@@ -81,18 +92,27 @@ export function usePushNotifications() {
       }
 
       // Convert base64 to Uint8Array
-      const applicationServerKey = urlBase64ToUint8Array(vapidKey)
-      
+      const applicationServerKey = urlBase64ToUint8Array(vapidKey) as BufferSource
+
       const pushSubscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey
       })
 
-      // Send subscription to backend
-      await sendSubscriptionToBackend(pushSubscription)
+      // Convert browser PushSubscription to our format
+      const subscriptionData = {
+        endpoint: pushSubscription.endpoint,
+        keys: {
+          p256dh: pushSubscription.getKey('p256dh') ? btoa(String.fromCharCode(...new Uint8Array(pushSubscription.getKey('p256dh')!))) : '',
+          auth: pushSubscription.getKey('auth') ? btoa(String.fromCharCode(...new Uint8Array(pushSubscription.getKey('auth')!))) : ''
+        }
+      }
 
-      setSubscription(pushSubscription as unknown as PushSubscription)
-      return pushSubscription as unknown as PushSubscription
+      // Send subscription to backend
+      await sendSubscriptionToBackend(subscriptionData)
+
+      setSubscription(subscriptionData)
+      return subscriptionData
       
     } catch (error) {
       console.error('[usePushNotifications] Error subscribing:', error)
@@ -112,10 +132,19 @@ export function usePushNotifications() {
     try {
       const registration = await navigator.serviceWorker.ready
       const pushSubscription = await registration.pushManager.getSubscription()
-      
+
       if (pushSubscription) {
+        // Convert to our format before deleting from backend
+        const subscriptionData = {
+          endpoint: pushSubscription.endpoint,
+          keys: {
+            p256dh: pushSubscription.getKey('p256dh') ? btoa(String.fromCharCode(...new Uint8Array(pushSubscription.getKey('p256dh')!))) : '',
+            auth: pushSubscription.getKey('auth') ? btoa(String.fromCharCode(...new Uint8Array(pushSubscription.getKey('auth')!))) : ''
+          }
+        }
+
         await pushSubscription.unsubscribe()
-        await deleteSubscriptionFromBackend(pushSubscription)
+        await deleteSubscriptionFromBackend(subscriptionData)
         setSubscription(null)
         return true
       }
@@ -129,7 +158,7 @@ export function usePushNotifications() {
     }
   }
 
-  const sendSubscriptionToBackend = async (sub: PushSubscription) => {
+  const sendSubscriptionToBackend = async (sub: PushSubscriptionData) => {
     try {
       const token = localStorage.getItem('token')
       await fetch('/api/push/subscribe', {
@@ -145,7 +174,7 @@ export function usePushNotifications() {
     }
   }
 
-  const deleteSubscriptionFromBackend = async (sub: PushSubscription) => {
+  const deleteSubscriptionFromBackend = async (sub: PushSubscriptionData) => {
     try {
       const token = localStorage.getItem('token')
       await fetch('/api/push/unsubscribe', {

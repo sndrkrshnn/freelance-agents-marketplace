@@ -59,12 +59,9 @@ export default defineConfig({
         ],
       },
       devOptions: {
-        enabled: true,
-        type: 'module',
+        enabled: false,
       },
-      strategies: 'injectManifest',
-      srcDir: 'src',
-      filename: 'sw.js',
+      strategies: 'generateSW',
     }),
   ],
   resolve: {

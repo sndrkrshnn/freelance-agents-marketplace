@@ -248,12 +248,14 @@ export interface DashboardStats {
     [status: string]: number;
   };
   payments: {
+    statuses: {
+      [status: string]: {
+        count: number;
+        totalAmount: number;
+      };
+    };
     totalRevenue: number;
     platformFees: number;
-    [status: string]: {
-      count: number;
-      totalAmount: number;
-    };
   };
   recentUsers?: Partial<User>[];
   recentTasks?: Partial<Task>[];
@@ -291,7 +293,7 @@ export interface ApiResponse<T> {
 }
 
 export interface PaginatedResponse<T> {
-  [key: string]: T[];
+  data: T[];
   pagination?: {
     page: number;
     limit: number;

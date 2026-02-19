@@ -1,68 +1,43 @@
-import { openDB, DBSchema, IDBPDatabase } from 'idb'
+import { openDB, IDBPDatabase } from 'idb'
 
-// Define database schema
-interface AgentMarketDB extends DBSchema {
-  offlineDrafts: {
-    key: string
-    value: {
-      id: string
-      type: 'task' | 'proposal' | 'message'
-      data: any
-      timestamp: number
-      synced: boolean
-    }
-    indexes: {
-      'by-timestamp': number
-      'by-type': string
-      'by-synced': boolean
-    }
-  }
-  messages: {
-    key: string
-    value: {
-      id: string
-      conversationId: string
-      senderId: string
-      recipientId: string
-      content: string
-      timestamp: number
-      synced: boolean
-    }
-    indexes: {
-      'by-conversation': string
-      'by-timestamp': number
-    }
-  }
-  tasks: {
-    key: string
-    value: {
-      id: string
-      data: any
-      timestamp: number
-    }
-    indexes: {
-      'by-timestamp': number
-    }
-  }
-  settings: {
-    key: string
-    value: any
-  }
+// Define database types
+export interface OfflineDraft {
+  id: string
+  type: 'task' | 'proposal' | 'message'
+  data: any
+  timestamp: number
+  synced: boolean
+}
+
+export interface OfflineMessage {
+  id: string
+  conversationId: string
+  senderId: string
+  recipientId: string
+  content: string
+  timestamp: number
+  synced: boolean
+}
+
+interface Task {
+  id: string
+  data: any
+  timestamp: number
 }
 
 const DB_NAME = 'AgentMarketDB'
 const DB_VERSION = 1
 
-let dbInstance: IDBPDatabase<AgentMarketDB> | null = null
+let dbInstance: IDBPDatabase | null = null
 
 // Initialize database
-export async function initDB(): Promise<IDBPDatabase<AgentMarketDB>> {
+export async function initDB(): Promise<IDBPDatabase> {
   if (dbInstance) {
     return dbInstance
   }
 
-  dbInstance = await openDB<AgentMarketDB>(DB_NAME, DB_VERSION, {
-    upgrade(db, oldVersion, newVersion, transaction) {
+  dbInstance = await openDB(DB_NAME, DB_VERSION, {
+    upgrade(db, oldVersion: number) {
       // Create offlineDrafts store
       if (!db.objectStoreNames.contains('offlineDrafts')) {
         const draftStore = db.createObjectStore('offlineDrafts', {
@@ -80,6 +55,7 @@ export async function initDB(): Promise<IDBPDatabase<AgentMarketDB>> {
         })
         messageStore.createIndex('by-conversation', 'conversationId')
         messageStore.createIndex('by-timestamp', 'timestamp')
+        messageStore.createIndex('by-synced', 'synced')
       }
 
       // Create tasks store
@@ -110,7 +86,7 @@ export async function initDB(): Promise<IDBPDatabase<AgentMarketDB>> {
 }
 
 // Get database instance
-export async function getDB(): Promise<IDBPDatabase<AgentMarketDB>> {
+export async function getDB(): Promise<IDBPDatabase> {
   if (!dbInstance) {
     return await initDB()
   }
@@ -118,14 +94,6 @@ export async function getDB(): Promise<IDBPDatabase<AgentMarketDB>> {
 }
 
 // ==================== Offline Drafts ====================
-
-export interface OfflineDraft {
-  id: string
-  type: 'task' | 'proposal' | 'message'
-  data: any
-  timestamp: number
-  synced: boolean
-}
 
 export async function saveOfflineDraft(draft: OfflineDraft): Promise<void> {
   const db = await getDB()
@@ -268,14 +236,18 @@ export async function deleteSetting(key: string): Promise<void> {
 
 export async function getUnsyncedData(): Promise<{
   drafts: OfflineDraft[]
-  messages: OfflineMessage[]
+  messages: any[]
 }> {
   const db = await getDB()
-  
-  const [drafts, messages] = await Promise.all([
-    db.getAllFromIndex('offlineDrafts', 'by-synced', false),
-    db.getAllFromIndex('messages', 'by-synced', false)
+
+  // Get all items and filter by synced status
+  const [allDrafts, allMessages] = await Promise.all([
+    db.getAll('offlineDrafts'),
+    db.getAll('messages')
   ])
+
+  const drafts = allDrafts.filter((draft: any) => !draft.synced) as OfflineDraft[]
+  const messages = allMessages.filter((msg: any) => !msg.synced)
 
   return { drafts, messages }
 }
